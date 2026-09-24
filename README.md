@@ -63,16 +63,21 @@ Your workspace is completely empty (except for this guide and a mock ERP API run
 
 **🔨 Implementation Steps:**
 
-Before writing code, map the business requirements to the DDD architecture layers:
+Before writing code, we must translate the raw business request into an engineering plan. Let's walk through this process:
 
-1. **Extract Requirements:** Fetch invoices, validate them, threshold them, and approve them.
-2. **Identify Risks & Mitigations:** 
-   * *Risk:* The ERP API is unstable (503 errors). *Mitigation:* Implement exponential retries at the network layer.
-   * *Risk:* The upstream data is corrupted. *Mitigation:* Implement strict validation at the boundary before processing.
-3. **Map the Architecture:** Split the solution into three distinct functional layers:
-   * **Infrastructure:** Handles the external world (HTTP clients and retries).
-   * **Domain:** Contains the business rules and data models (Invoice validation).
-   * **Application:** The orchestrator that coordinates the workflow between the Infrastructure and the Domain.
+1. **Deconstruct the Business Request**
+   The business asked us to "automate the invoice approval process." As an engineer, you must break this down into discrete, actionable requirements. First, we need to acquire the data (fetch pending invoices). Next, we must verify the integrity of the data (validate that the sum of line items equals the total amount). Finally, we must apply the business rule (if the amount is under $10,000, approve it in the ERP system; otherwise, flag it for manual review).
+
+2. **Identify Risks and Design Mitigations**
+   We know that real-world systems fail. We must ask: *What can go wrong?* 
+   * *The Network Risk:* The target ERP API is known to drop connections and throw 503 errors. If we ignore this, our bot will crash constantly. *Mitigation:* We will isolate all API calls and wrap them in an exponential backoff retry loop.
+   * *The Data Risk:* The upstream system occasionally sends corrupted payloads where the math does not add up. *Mitigation:* We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic.
+
+3. **Map the Architecture (DDD)**
+   With our requirements and mitigations defined, we can map them to the Domain-Driven Design (DDD) layers. We will not write a single, procedural script. Instead, we divide the responsibilities:
+   * **The Infrastructure Layer:** This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops.
+   * **The Domain Layer:** This layer is strictly isolated from the network. It contains the data models and the validation rules. 
+   * **The Application Layer:** This is the orchestrator. It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
 
 ### Phase 1: Project Initialization
 
