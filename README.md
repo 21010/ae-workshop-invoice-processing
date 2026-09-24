@@ -329,17 +329,12 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    📦 project-root
    ┣ 📂 src/
    ┃ ┣ 📂 domain/         # Step 4: Core business logic and data validation (Pydantic)
-   ┃ ┃ ┗ 📜 __init__.py
    ┃ ┣ 📂 infrastructure/ # Step 5: External API clients and network resilience (Tenacity)
-   ┃ ┃ ┗ 📜 __init__.py
    ┃ ┗ 📂 application/    # Step 6: The orchestrator that glues Domain & Infrastructure together
-   ┃   ┗ 📜 __init__.py
    ┣ 📂 tests/
    ┃ ┣ 📜 conftest.py     # Shared mock data and fixtures for Pytest
    ┃ ┣ 📂 unit/           # Fast tests for business logic (no network required)
-   ┃ ┃ ┗ 📜 __init__.py
    ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
-   ┃   ┗ 📜 __init__.py
    ┣ 📂 .vscode/
    ┃ ┗ 📜 settings.json   # VS Code UI test integration
    ┣ 📜 .pre-commit-config.yaml # Step 2: Security and formatting guardrails
