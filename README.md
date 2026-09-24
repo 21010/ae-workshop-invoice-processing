@@ -891,10 +891,10 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    uv run task.py
    ```
 
-### Step 9: Observability & Telemetry (Replacing the Legacy log.html)
+### Step 9: Observability & Enterprise Deployment
 
 <details>
-<summary><b>📚 Theory: Structured Logs & 12-Factor Telemetry (Learn More)</b></summary>
+<summary><b>📚 Theory: Structured Logs & Azure Architecture (Learn More)</b></summary>
 
 > **1. The 12-Factor App on Logs**
 > Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern. Servers and cloud containers are ephemeral; if the machine dies, your logs are permanently deleted. Instead, modern bots output **Event Streams** to the terminal (`stdout`), allowing log routers to securely transport them off-site.
@@ -911,6 +911,23 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 > * **INFO:** Standard business events (e.g., `invoice_approved`).
 > * **WARNING:** Expected edge cases that require human intervention (e.g., `manual_review_required`).
 > * **ERROR:** Unexpected system crashes (e.g., `erp_database_timeout`).
+> 
+> **5. Enterprise Deployment (Azure Architecture)**
+> Because we followed DDD and 12-Factor principles, our code is 100% portable. Here is how you deploy it:
+> * **On-Premises (Hybrid):** Run via Windows Task Scheduler. Use the `azure-monitor-opentelemetry` Python package to securely pipe your `structlog` stream through the corporate firewall into Azure Application Insights.
+> * **Cloud Native (Azure Container Apps/AKS):** Package the bot in a `Dockerfile`. Azure automatically intercepts the JSON `stdout` stream from Step 9 with zero code changes!
+> * **Serverless (Azure Functions):** Wrap `processor.run()` in a Time-Triggered Function. You pay $0 when the bot is idle. 
+>   * *Template Example:*
+>     ```python
+>     import azure.functions as func
+>     from task import main
+>     
+>     app = func.FunctionApp()
+>     @app.schedule(schedule="0 */15 * * * *", arg_name="myTimer") # Run every 15 minutes
+>     def erp_bot(myTimer: func.TimerRequest) -> None:
+>         main()
+>     ```
+> * **Low-Code Orchestration (Azure Logic Apps):** If the ERP requires legacy XML SOAP authentication, let a Logic App handle the complex Auth visual flow, and have it trigger your Azure Function purely for the Pydantic math validation.
 
 </details>
 
@@ -1010,28 +1027,5 @@ Sarah loves the bot, but audit season is approaching. She needs a perfectly quer
    uv run task.py
    ```
 
-### Step 10: Enterprise Deployment (Azure Architecture)
-
-Now that your bot is engineered, how do you deploy it to production? Because we followed the **12-Factor App** principles, this Python codebase is 100% portable. Here are the 4 standard ways to deploy this in a Microsoft Azure ecosystem:
-
-**1. On-Premises Server (Hybrid Cloud)**
-
-* **How:** If the ERP system is locked behind a strict corporate firewall, run the bot on a local Windows Server using Task Scheduler (`uv run task.py`).
-* **Telemetry:** Install the `azure-monitor-opentelemetry` package and add `configure_azure_monitor()` to your `task.py`. The bot will stream its structured JSON logs out of your private network directly into **Azure Application Insights**.
-
-**2. Azure Container Apps or AKS (Cloud Native)**
-
-* **How:** Package the repository into a Docker container and deploy it to Azure Container Apps as a background job.
-* **Telemetry:** The Azure infrastructure automatically captures the JSON `stdout` terminal stream we built in Step 9. You get Application Insights integration with **zero code changes**.
-
-**3. Azure Functions (Serverless)**
-
-* **How:** Wrap the `processor.run()` logic inside a Time-Triggered Azure Function (e.g., scheduled to run every 15 minutes). 
-* **Pros:** You only pay for the exact milliseconds the bot is processing invoices. If there are no invoices, it costs $0.
-* **Cons:** Serverless functions have execution time limits (usually 10 minutes). If your bot needs to process 10,000 invoices in a single run, you would need to use Azure Durable Functions.
-
-**4. Azure Logic Apps (Low-Code Orchestration)**
-
-* **How:** Sometimes the upstream ERP system requires complex, legacy XML SOAP authentication. Let a Logic App handle the complex trigger and authentication steps. The Logic App can fetch the data and then trigger your Python bot (hosted in an Azure Function) just to execute the heavy Pydantic math validation. 
-
-**Conclusion:** The automation project is complete.
+---
+**🏆 Conclusion:** The masterclass is complete! You have successfully built, tested, and logged a modern enterprise automation bot using pure Python!
