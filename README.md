@@ -547,7 +547,7 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 Sarah's primary complaint was that the ERP system randomly throws `503 Service Unavailable` errors during peak hours, causing her legacy macro to crash instantly. We are going to build an API client that uses exponential backoff to patiently wait out the crashes, and automatically casts the raw JSON into the bulletproof Pydantic models we built in Step 4.
 
 1. **Analyze the ERP API (Swagger):**
-   *Challenge: The mock ERP system is running locally. Open your browser and navigate to `http://127.0.0.1:8080/docs`. Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them.*
+   *Challenge: The mock ERP system is running locally on port 8080. If you are using GitHub Codespaces, open the "Ports" tab (next to your Terminal), find Port 8080, and click the "Open in Browser" globe icon. Then, add `/docs` to the end of the URL in your browser. Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them!*
 
 2. **Create the API Client (`src/infrastructure/api_client.py`):**
    *What are we doing?* We are building the `FastAPIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call. We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
