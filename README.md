@@ -169,7 +169,7 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 4. **Analyze the Configuration:**
    Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
 
-### Step 2: Code Quality & Pre-commit
+### Step 2: Building Automated Security Guardrails
 
 <details>
 <summary><b>📚 Theory: Shift-Left Security & Tooling (Learn More)</b></summary>
