@@ -4,7 +4,7 @@
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
-## 1. The Business Case & Problem Analysis
+## 1. The Business Case & Problem
 
 You have been tasked with automating the approval process for incoming vendor invoices.
 
@@ -43,47 +43,99 @@ flowchart TD
 
 Your workspace is completely empty (except for this guide and a mock ERP API running silently in the background on `http://127.0.0.1:8080`). You will build the solution from scratch.
 
+### Phase 0: Process Analysis & Architecture Design
+Before we write a single line of code, we must analyze the process as Engineers.
+*   **Requirements:** Fetch invoices, mathematically validate them, threshold them, and approve them.
+*   **Risks:** The API will drop connections (503), and the data will be corrupted.
+*   **Mitigation Plan:** We will implement exponential retries at the network layer, and strict deterministic validation at the data boundary.
+*   **Architecture (Domain-Driven Design):** We will use the Hexagonal/DDD design pattern. We will not write a massive, 1,000-line procedural script. Instead, we will split the bot into 3 standard layers:
+    1.  **Infrastructure:** Talks to the outside world (APIs).
+    2.  **Domain:** Pure business rules and data models (Validation).
+    3.  **Application:** The orchestrator that glues them together.
+
 ### Phase 1: Project Initialization
-**Why:** Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms.
+Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms.
 
 1. **Initialize the project in the terminal:**
    ```bash
    uv init
    ```
 2. **Add production dependencies:**
+   *Why these?* We need `pydantic` because it is the modern industry standard for instantly validating JSON data structures. We need `requests` to talk to the HTTP API, and `tenacity` to effortlessly handle retry loops when the API crashes.
    ```bash
    uv add pydantic requests tenacity
    ```
 3. **Add development dependencies:**
+   *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot, but they don't need to be packaged into the final production server. Keeping them separate makes our bot faster and more secure.
    ```bash
    uv add --dev pytest ruff bandit pyrefly pre-commit
    ```
+4. **Analyze the Configuration:**
+   Open the newly generated `pyproject.toml` file. Notice how `uv` automatically tracked your dependencies. This file is the single source of truth for your bot's environment!
 
 ### Phase 2: Code Quality & Pre-commit
-**Why:** We want to automatically format our code and catch security issues (like hardcoded passwords) before they are ever committed to Git.
+We want to automatically format our code and catch security issues before they are ever committed to Git.
 
-1. **Initialize Git (if not already done):**
+1. **Initialize Git and enforce the 'main' branch standard:**
    ```bash
    git init
+   git branch -M main
    ```
-2. **Setup pre-commit:**
-   Create a file named `.pre-commit-config.yaml` in the root directory and paste the strict security rules (we have provided this file in the solution branch, but for now, you can skip to Phase 3 if you want to focus on code).
+2. **Setup pre-commit using our local tools:**
+   Create a file named `.pre-commit-config.yaml` in the root directory. *Notice how we configure the hooks to execute locally via `uv run` to guarantee they use our exact environment versions.*
+   
+   <details>
+   <summary><b>💡 Click here to copy the pre-commit configuration</b></summary>
+   
+   ```yaml
+   repos:
+     - repo: local
+       hooks:
+         - id: ruff
+           name: ruff
+           entry: uv run ruff check --fix
+           language: system
+           types: [python]
+           require_serial: true
+         - id: ruff-format
+           name: ruff-format
+           entry: uv run ruff format
+           language: system
+           types: [python]
+         - id: bandit
+           name: bandit
+           entry: uv run bandit -c pyproject.toml -r .
+           language: system
+           types: [python]
+         - id: pyrefly
+           name: pyrefly
+           entry: uv run pyrefly
+           language: system
+           types: [python]
+     - repo: https://github.com/trufflesecurity/trufflehog
+       rev: v3.73.0
+       hooks:
+         - id: trufflehog
+   ```
+   </details>
+3. **Install the hooks:** `uv run pre-commit install`
 
 ### Phase 3: Project Structure (DDD)
-**Why:** Domain-Driven Design (DDD) organizes code by business concepts rather than technical functions. This prevents "spaghetti code".
+Based on our Phase 0 design, we must construct the architecture that isolates our business logic from the flaky APIs.
 
 1. **Create the directories (Windows PowerShell):**
    ```powershell
    New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
    ```
 2. **Make them Python packages:**
-   Create an empty `__init__.py` file inside each folder. This tells Python that these folders contain importable code.
+   Create an empty `__init__.py` file inside each folder. 
+   *Why?* Without this file, Python sees a normal folder, not a module. By adding `__init__.py`, Python can import code across files. (Smart trick: You can also use this file to explicitly expose public classes, so imports look like `from src.domain import Invoice` instead of digging deep into sub-files!).
    ```powershell
    New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py
    ```
 
 ### Phase 4: Building the Domain (Data Validation)
-**Why:** We must strictly validate data. If an invoice has bad math, it must fail deterministically here, before it ever touches our business logic.
+Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By strictly defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
 
 1. **Create `src/domain/models.py`:**
    *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
