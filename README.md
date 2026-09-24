@@ -267,32 +267,62 @@ Now that our environment is built, we need to protect it. We are going to set up
    uv run pre-commit install
    ```
 
-### Step 3: Project Structure (DDD)
+### Step 3: Architecting the Foundation (DDD & Testing)
 
 <details>
-<summary><b>📚 Theory: Domain-Driven Isolation (Learn More)</b></summary>
+<summary><b>📚 Theory: Domain-Driven Isolation & Test Strategies (Learn More)</b></summary>
 
-> Based on our Step 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (unstable APIs). This guarantees our code remains clean and testable.
+> **1. Structuring Domain-Driven Design (DDD)**
+> Based on our Step 0 design, we must physically construct the folders that enforce our architecture. We divide our code into:
+> * **Domain (`src/domain`):** Pure Python business rules. It has absolutely zero dependencies on the outside world.
+> * **Infrastructure (`src/infrastructure`):** The "adapter" layer that talks to the chaotic external world (network APIs, databases, UI).
+> * **Application (`src/application`):** The Use-Case orchestrator that fetches data via the Infrastructure and passes it to the Domain.
+> 
+> **2. The Magic of `__init__.py`**
+> In Python, a folder is just a folder until you add an `__init__.py` file. This file tells Python, "Treat this directory as an importable module." Beyond just marking a directory, modern engineers use `__init__.py` to control the public API of their modules. For example, by putting `from .models import Invoice` inside `src/domain/__init__.py`, other files can simply run `from src.domain import Invoice` instead of digging into nested sub-files.
+> 
+> **3. Testing Categories (The Testing Pyramid)**
+> A robust automation project uses layers of tests:
+> * **Unit Tests (`tests/unit`):** Tests a single function or class in total isolation. These should run in milliseconds and never touch a network or database.
+> * **Integration Tests (`tests/integration`):** Tests how multiple components work together (e.g., Application orchestrator calling the Infrastructure). This is where we heavily use **Mocking** (faking API responses) so tests remain fast and reliable without hitting real servers.
+> * **End-to-End (E2E) Tests:** Tests the entire system from the user's perspective hitting the actual live ERP system.
+> 
+> **4. Pytest Best Practices & `conftest.py`**
+> * **Naming Conventions:** Pytest will only discover your tests if the file starts with `test_` (e.g., `test_invoice.py`) and the function starts with `test_` (e.g., `def test_math_validation():`).
+> * **The `conftest.py` File:** If you have data (like a fake test invoice) that you need across multiple test files, you put it in a file named `conftest.py` as a "Fixture". Pytest automatically injects these fixtures into any test that asks for them, keeping your code incredibly DRY (Don't Repeat Yourself).
+> 
+> **5. Setting up VS Code for Pytest**
+> To run tests natively inside the VS Code "Testing" sidebar, you must create a `.vscode/settings.json` file telling the editor to use Pytest instead of the default `unittest` framework.
 
 </details>
 
 **🔨 Implementation Steps:**
 
-1. **Create the directories (Windows PowerShell):**
+Now that our environment is locked down by Git and `pre-commit`, it is time to physically build the folders for our Domain-Driven Design and our Testing framework. 
+
+1. **Scaffold the Architecture (Windows PowerShell):**
+   *Why these folders?* We are explicitly creating boundaries. The core logic goes in `domain`, the HTTP requests go in `infrastructure`, and the orchestrator goes in `application`. The tests are similarly segregated between `unit` and `integration`.
    
    ```powershell
    New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
    ```
 
-2. **Make them Python packages:**
-   Create an empty `__init__.py` file inside each folder. 
-   *Why?* Without this file, Python sees a normal folder, not a module. By adding `__init__.py`, Python can import code across files. (Smart trick: You can also use this file to explicitly expose public classes, so imports look like `from src.domain import Invoice` instead of digging deep into sub-files!).
+2. **Initialize them as Python Modules:**
+   Create an empty `__init__.py` file inside each folder so Python can import them. We will also add an empty `conftest.py` file to our tests folder, preparing it for shared testing fixtures later.
    
    ```powershell
-   New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py
+   New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
    ```
 
-3. **Verify the Architecture Structure:**
+3. **Configure VS Code Testing (Optional but Recommended):**
+   *Why?* You can always run `uv run pytest` in the terminal, but configuring VS Code allows you to click a green "Play" button next to any test visually in your editor.
+   
+   ```powershell
+   New-Item -ItemType Directory -Force -Path .vscode
+   Set-Content -Path .vscode/settings.json -Value '{"python.testing.pytestEnabled": true, "python.testing.unittestEnabled": false, "python.testing.pytestArgs": ["tests"]}'
+   ```
+
+4. **Verify the Final Structure:**
    By the end of this workshop, your project tree will look exactly like this:
    
    ```text
@@ -305,10 +335,13 @@ Now that our environment is built, we need to protect it. We are going to set up
    ┃ ┗ 📂 application/    # Step 6: The orchestrator that glues Domain & Infrastructure together
    ┃   ┗ 📜 __init__.py
    ┣ 📂 tests/
+   ┃ ┣ 📜 conftest.py     # Shared mock data and fixtures for Pytest
    ┃ ┣ 📂 unit/           # Fast tests for business logic (no network required)
    ┃ ┃ ┗ 📜 __init__.py
    ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
    ┃   ┗ 📜 __init__.py
+   ┣ 📂 .vscode/
+   ┃ ┗ 📜 settings.json   # VS Code UI test integration
    ┣ 📜 .pre-commit-config.yaml # Step 2: Security and formatting guardrails
    ┗ 📜 pyproject.toml          # Step 1: Environment and dependency definitions
    ```
