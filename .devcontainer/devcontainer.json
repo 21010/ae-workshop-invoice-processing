@@ -1,0 +1,48 @@
+{
+  "name": "Automation Engineering",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
+  "features": {},
+  "onCreateCommand": "pip install uv",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.exclude": {
+          "mock_api": true
+        },
+        "workbench.startupEditor": "readme",
+        "files.autoSave": "afterDelay",
+        "workbench.colorTheme": "JetBrains New UI Dark Theme",
+        "workbench.iconTheme": "vscode-icons",
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "tests",
+          "-s"
+        ],
+        "marimo.pythonPath": "${workspaceFolder}/.venv/bin/python",
+        
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-python.vscode-python-envs",
+        "charliermarsh.ruff",
+        "astral-sh.ty",
+        "meta.pyrefly",
+        "ms-vsliveshare.vsliveshare",
+        "redhat.vscode-extension-red-hat-business-automation-bundle",
+        "adpyke.codesnap",
+        "usernamehw.errorlens",
+        "tamasfe.even-better-toml",
+        "yzhang.markdown-all-in-one",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml",
+        "Qvist.jetbrains-new-ui-dark-theme",
+        "vscode-icons-team.vscode-icons",
+        "marimo-team.vscode-marimo"
+      ]
+    }
+  },
+  "postStartCommand": "uvx --with fastapi --with uvicorn --with pydantic uvicorn mock_api.main:app --host 127.0.0.1 --port 8080 --reload &",
+  "forwardPorts": [8080]
+}

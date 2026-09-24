@@ -1,0 +1,246 @@
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/21010/ae-worshop/tree/main)
+
+# Guided Automation Project: Invoice Processing
+
+Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
+
+## 1. The Business Case & Problem Analysis
+
+You have been tasked with automating the approval process for incoming vendor invoices.
+
+**The Context:**
+In the past, this process was handled by a legacy RPA bot that scraped a UI. It was brittle and frequently broke when the UI changed. Now, we are migrating to an API-first approach, pulling invoice payloads from an upstream system, and we need to build a robust Python backend to process them reliably.
+
+**The Core Problems (Data Corruption & Instability):**
+1. **Data Corruption:** The upstream system occasionally sends corrupted data payloads. For example, it might send correct line items ($500 and $200) but provide a mathematically incorrect total amount ($9000). If we blindly pass this to the ERP system, we corrupt our financial data.
+2. **System Instability:** The target ERP system's REST API is notoriously flaky and frequently throws `503 Service Unavailable` errors. Our automation must be resilient enough to handle these network drops automatically without crashing.
+
+**The Business Rules:**
+1. Fetch pending invoices from the ERP system via its new REST API.
+2. **Deterministic Validation:** Ensure the `Total Amount` exactly matches the sum of the `Line Items`. If it doesn't, reject it immediately.
+3. **Thresholding:** Auto-approve the invoice in the ERP system **UNLESS** the total amount is greater than $10,000. Invoices over $10,000 require manual review.
+
+### As-Is Process (BPMN)
+
+```mermaid
+flowchart TD
+    Start((Start)) --> Fetch[Fetch Pending Invoices from ERP]
+    Fetch --> Loop{For each Invoice}
+    Loop --> Validate{Is Total == Sum of Items?}
+    Validate -- No --> Reject[Flag as Data Error]
+    Validate -- Yes --> CheckAmount{Is Total > 10,000?}
+    CheckAmount -- Yes --> Manual[Send for Manual Review]
+    CheckAmount -- No --> Approve[Approve in ERP]
+    Reject --> Next[Next Invoice]
+    Manual --> Next
+    Approve --> Next
+    Next --> Loop
+```
+
+---
+
+## 2. Step-by-Step Implementation Guide
+
+Your workspace is completely empty (except for this guide and a mock ERP API running silently in the background on `http://127.0.0.1:8080`). You will build the solution from scratch.
+
+### Phase 1: Project Initialization
+**Why:** Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms.
+
+1. **Initialize the project in the terminal:**
+   ```bash
+   uv init
+   ```
+2. **Add production dependencies:**
+   ```bash
+   uv add pydantic requests tenacity
+   ```
+3. **Add development dependencies:**
+   ```bash
+   uv add --dev pytest ruff bandit pyrefly pre-commit
+   ```
+
+### Phase 2: Code Quality & Pre-commit
+**Why:** We want to automatically format our code and catch security issues (like hardcoded passwords) before they are ever committed to Git.
+
+1. **Initialize Git (if not already done):**
+   ```bash
+   git init
+   ```
+2. **Setup pre-commit:**
+   Create a file named `.pre-commit-config.yaml` in the root directory and paste the strict security rules (we have provided this file in the solution branch, but for now, you can skip to Phase 3 if you want to focus on code).
+
+### Phase 3: Project Structure (DDD)
+**Why:** Domain-Driven Design (DDD) organizes code by business concepts rather than technical functions. This prevents "spaghetti code".
+
+1. **Create the directories (Windows PowerShell):**
+   ```powershell
+   New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
+   ```
+2. **Make them Python packages:**
+   Create an empty `__init__.py` file inside each folder. This tells Python that these folders contain importable code.
+   ```powershell
+   New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py
+   ```
+
+### Phase 4: Building the Domain (Data Validation)
+**Why:** We must strictly validate data. If an invoice has bad math, it must fail deterministically here, before it ever touches our business logic.
+
+1. **Create `src/domain/models.py`:**
+   *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   from pydantic import BaseModel, model_validator
+
+   class LineItem(BaseModel):
+       description: str
+       amount: float
+
+   class Invoice(BaseModel):
+       id: str
+       vendor: str
+       currency: str
+       line_items: list[LineItem]
+       total_amount: float
+
+       @model_validator(mode="after")
+       def check_math(self):
+           calculated_total = sum(item.amount for item in self.line_items)
+           if calculated_total != self.total_amount:
+               raise ValueError(f"Math Error! Total {self.total_amount} != Sum {calculated_total}")
+           return self
+   ```
+   </details>
+
+2. **Write Unit Tests (`tests/unit/test_domain.py`):**
+   *Challenge: Write a Pytest function labeled `@pytest.mark.unit`. Create an invoice with bad math and use `with pytest.raises(ValueError):` to prove your validation catches it!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import pytest
+   from src.domain.models import Invoice, LineItem
+
+   @pytest.mark.unit
+   def test_bad_math_is_rejected():
+       with pytest.raises(ValueError):
+           Invoice(
+               id="1", vendor="A", currency="USD",
+               line_items=[LineItem(description="Item", amount=50)],
+               total_amount=9000  # Data Corruption!
+           )
+   ```
+   </details>
+3. **Run the test:** `uv run pytest -m unit`
+
+### Phase 5: Infrastructure (The Flaky Outside World)
+**Why:** External APIs fail. We need resilience to survive in production (12-Factor App principles).
+
+1. **Create `src/infrastructure/api_client.py`:**
+   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Write a POST method to approve an invoice, but decorate it with `@retry` from the `tenacity` library so it automatically retries if the server throws a 503 error!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import requests
+   from tenacity import retry, stop_after_attempt, wait_exponential
+   from src.domain.models import Invoice
+
+   class FastAPIClient:
+       def fetch_pending_invoices(self) -> list[Invoice]:
+           response = requests.get("http://127.0.0.1:8080/api/invoices/pending")
+           response.raise_for_status()
+           return [Invoice(**item) for item in response.json()]
+
+       @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
+       def approve_invoice(self, invoice_id: str) -> bool:
+           response = requests.post(f"http://127.0.0.1:8080/api/invoices/{invoice_id}/approve")
+           response.raise_for_status()
+           return True
+   ```
+   </details>
+
+### Phase 6: Application Layer (The Orchestrator)
+**Why:** The business rules (e.g., the $10,000 limit) belong in a clean orchestrator.
+
+1. **Create `src/application/processor.py`:**
+   *Challenge: Create an `InvoiceProcessor`. Use SOLID Dependency Inversion by creating an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Then write a `run()` method that loops through invoices and only approves them if they are under $10,000.*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import logging
+   from src.domain.models import Invoice
+   from typing import Protocol
+
+   logger = logging.getLogger(__name__)
+
+   # SOLID: Dependency Inversion. We don't care HOW the API works, just that it has these methods.
+   class InvoiceAPIClient(Protocol):
+       def fetch_pending_invoices(self) -> list[Invoice]: ...
+       def approve_invoice(self, invoice_id: str) -> bool: ...
+
+   class InvoiceProcessor:
+       def __init__(self, api_client: InvoiceAPIClient):
+           self.api_client = api_client
+           self.threshold = 10000.0
+
+       def run(self):
+           invoices = self.api_client.fetch_pending_invoices()
+           for inv in invoices:
+               if inv.total_amount > self.threshold:
+                   logger.warning(f"Manual Review required for {inv.id}")
+               else:
+                   self.api_client.approve_invoice(inv.id)
+                   logger.info(f"Approved {inv.id}")
+   ```
+   </details>
+
+### Phase 7: Integration Testing (No Network Required!)
+**Why:** Because of our clean DDD architecture, we can test the $10,000 threshold logic without ever hitting the real network.
+
+1. **Create `tests/integration/test_processor.py`:**
+   *Challenge: Write a `MockAPIClient` class that returns fake memory invoices instead of hitting the network. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import pytest
+   from src.application.processor import InvoiceProcessor
+   from src.domain.models import Invoice, LineItem
+
+   # A fake API client for testing!
+   class MockAPIClient:
+       def __init__(self):
+           self.approved_invoices = []
+           
+       def fetch_pending_invoices(self):
+           return [
+               Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
+               Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
+           ]
+           
+       def approve_invoice(self, invoice_id: str):
+           self.approved_invoices.append(invoice_id)
+           return True
+
+   @pytest.mark.integration
+   def test_processor_approves_under_threshold_only():
+       client = MockAPIClient()
+       processor = InvoiceProcessor(client)
+       processor.run()
+       
+       # It should approve CHEAP-1, but block EXPENSIVE-1
+       assert "CHEAP-1" in client.approved_invoices
+       assert "EXPENSIVE-1" not in client.approved_invoices
+   ```
+   </details>
+2. **Run the integration test:** `uv run pytest -m integration`
+
+🎉 **Congratulations!** You have just engineered a modern, tested, and resilient Python automation!
