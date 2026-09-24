@@ -83,6 +83,7 @@ Here is how a modern, best-practice configuration looks:
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Initialize the project in the terminal:**
    ```bash
    uv init
@@ -109,6 +110,7 @@ We want to automatically format our code and catch security issues before they a
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Initialize Git and enforce the 'main' branch standard:**
    ```bash
    git init
@@ -162,6 +164,7 @@ Based on our Phase 0 design, we must construct the architecture that isolates ou
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create the directories (Windows PowerShell):**
    ```powershell
    New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
@@ -202,6 +205,7 @@ Data modeling is arguably the most important step in automation. Generic diction
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create `src/domain/models.py`:**
    *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
    
@@ -264,6 +268,7 @@ In Phase 0, we identified that the target ERP system is unstable (throws 503 err
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create `src/infrastructure/api_client.py`:**
    *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Phase 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
    
@@ -300,6 +305,7 @@ The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator import
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create `src/application/processor.py`:**
    *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Write a `run()` method that loops through the invoices and only approves them if they are under $10,000.*
    
@@ -345,6 +351,7 @@ Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create `tests/integration/test_processor.py`:**
    *Challenge: Write a `MockAPIClient` class that returns fake memory invoices instead of hitting the network. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
    
@@ -395,6 +402,7 @@ We have built our architecture, but we need a lightweight trigger to actually st
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Create `task.py` in the root directory:**
    *Challenge: Create the main execution file. Import the real `FastAPIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
    
@@ -445,6 +453,7 @@ Instead, modern applications output **Structured JSON Logs** to the terminal str
 
 </details>
 
+**🔨 Implementation Steps:**
 1. **Add the modern logging library:**
    ```bash
    uv add structlog
