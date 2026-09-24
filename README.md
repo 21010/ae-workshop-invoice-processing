@@ -832,13 +832,15 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
 <summary><b>📚 Theory: Lightweight Entry Points & Integration (Learn More)</b></summary>
 
 > **1. The Purpose of a Lightweight Entry Point**
-> In legacy scripts, everything—network calls, business logic, math, and configuration—is jammed into one massive `main.py` file. In our DDD architecture, `task.py` is incredibly "dumb" and lightweight. Its only job is to wire the separated layers together using **Dependency Injection** and hit "Go".
+> In legacy RPA (like Robocorp), everything—network calls, business logic, math, and configuration—is often jammed into one massive `tasks.py` file. In our DDD architecture, `task.py` is incredibly "dumb" and lightweight. Its only job is to wire the separated layers together using **Dependency Injection** and hit "Go".
 > 
-> **2. Seamless Integration (CI/CD, PAD, and Terminal)**
+> **2. Seamless Integration (CI/CD, BPM, and Cloud)**
 > Because our `task.py` is lightweight and our environment is perfectly managed by `uv`, we can execute this bot from absolutely anywhere:
 > * **Terminal:** A developer can manually run it via `uv run task.py`.
-> * **CI/CD Pipelines:** GitHub Actions or Jenkins can run it on a scheduled cron job simply by executing that same command.
-> * **Legacy Orchestrators (Power Automate Desktop - PAD):** If Sarah's department uses Power Automate Desktop, you don't need to rebuild the Python logic visually in PAD. You can simply use the PAD "Run DOS command" action to execute `uv run task.py` and let this robust DDD architecture do the heavy lifting!
+> * **CI/CD Pipelines:** GitHub Actions, Jenkins, or Azure DevOps Pipelines can run it on a schedule.
+> * **Data & Automation Orchestrators:** You can easily trigger this script from Apache Airflow, Prefect, or enterprise BPM Engines.
+> * **Cloud Native Serverless:** You can wrap this execution command inside an Azure Function or trigger it via an Azure Logic App!
+> * **Legacy Orchestrators (Power Automate Desktop):** If Sarah's department uses PAD, you can use the PAD "Run DOS command" action to execute `uv run task.py` and let this robust Python architecture do the heavy lifting without visual spaghetti!
 
 </details>
 
