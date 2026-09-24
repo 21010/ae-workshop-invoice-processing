@@ -189,10 +189,12 @@ Data modeling is arguably the most important step in automation. Generic diction
 3. **Run the test:** `uv run pytest -m unit`
 
 ### Phase 5: Infrastructure (The Flaky Outside World)
-**Why:** External APIs fail. We need resilience to survive in production (12-Factor App principles).
+In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the messy, unpredictable outside world (APIs, databases, file systems). 
+
+*Theory Link:* In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
 
 1. **Create `src/infrastructure/api_client.py`:**
-   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Write a POST method to approve an invoice, but decorate it with `@retry` from the `tenacity` library so it automatically retries if the server throws a 503 error!*
+   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Phase 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -217,10 +219,12 @@ Data modeling is arguably the most important step in automation. Generic diction
    </details>
 
 ### Phase 6: Application Layer (The Orchestrator)
-**Why:** The business rules (e.g., the $10,000 limit) belong in a clean orchestrator.
+The Application Layer is the "Conductor" of the orchestra. It doesn't know *how* to validate math (the Domain does that), and it doesn't know *how* to make HTTP requests (the Infrastructure does that). It simply orchestrates the flow and applies high-level business rules (like our $10,000 threshold limit).
+
+*Theory Link (SOLID Principles):* The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
 
 1. **Create `src/application/processor.py`:**
-   *Challenge: Create an `InvoiceProcessor`. Use SOLID Dependency Inversion by creating an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Then write a `run()` method that loops through invoices and only approves them if they are under $10,000.*
+   *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Write a `run()` method that loops through the invoices and only approves them if they are under $10,000.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -254,7 +258,9 @@ Data modeling is arguably the most important step in automation. Generic diction
    </details>
 
 ### Phase 7: Integration Testing (No Network Required!)
-**Why:** Because of our clean DDD architecture, we can test the $10,000 threshold logic without ever hitting the real network.
+Testing automation bots is notoriously difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved ultimate **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
+
+*Theory Link:* Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
 
 1. **Create `tests/integration/test_processor.py`:**
    *Challenge: Write a `MockAPIClient` class that returns fake memory invoices instead of hitting the network. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
@@ -293,6 +299,8 @@ Data modeling is arguably the most important step in automation. Generic diction
        assert "EXPENSIVE-1" not in client.approved_invoices
    ```
    </details>
-2. **Run the integration test:** `uv run pytest -m integration`
+2. **Run the integration test:** 
+   Execute `uv run pytest -m integration` in your terminal. 
+   *(Note: If Pytest throws a yellow warning about "unknown markers", try creating a `pytest.ini` file in the root directory to officially register them!)*
 
 🎉 **Congratulations!** You have just engineered a modern, tested, and resilient Python automation!
