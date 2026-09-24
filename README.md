@@ -380,21 +380,38 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 > Pydantic is the industry standard library for data validation. Instead of dictionaries, we define our Domain entities as strict Python classes using `BaseModel`. 
 > * **Automatic Type Casting:** If Pydantic expects a `float` but receives the string `"100.00"`, it will automatically convert it to a float. If it receives something uncastable (like `"UNKNOWN"`), it instantly throws a loud validation error *at the boundary* of the application, rather than failing silently later.
 > * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
-> * **Custom Validators:** You can write custom python methods decorated with `@model_validator` to enforce complex business rules (e.g., "Does the sum of all line items equal the total amount?").
+> * **Custom Validators:** You can write custom Python methods decorated with `@model_validator` to enforce complex business rules. There are two critical modes:
+>   * `mode="before"`: Runs *before* Pydantic does its automatic type casting. The data you receive is a raw dictionary. Use this if you need to mutate or clean up the raw payload before parsing (e.g., stripping whitespace).
+>   * `mode="after"`: Runs *after* Pydantic has validated all types. The data you receive is a fully instantiated Python object (e.g., `self.employee_id` is guaranteed to be an `int`). **This is best for business logic.**
 > 
->   *Example: Defining a strict Domain Model*
+>   *Example: Defining a strict Domain Model with Validators*
 >   ```python
->   from pydantic import BaseModel
+>   from pydantic import BaseModel, model_validator
 > 
 >   class Employee(BaseModel):
 >       employee_id: int        # Automatically casts the string "123" to int 123
 >       name: str
 >       is_active: bool = True  # Provides a default value if missing
+>
+>       @model_validator(mode="before")
+>       @classmethod
+>       def clean_raw_data(cls, data: dict):
+>           # Runs first! We clean the raw dictionary before Pydantic sees it.
+>           if "name" in data and isinstance(data["name"], str):
+>               data["name"] = data["name"].strip().title()
+>           return data
+>
+>       @model_validator(mode="after")
+>       def enforce_business_rules(self):
+>           # Runs last! We safely use the fully cast object.
+>           if self.employee_id <= 0:
+>               raise ValueError("Employee ID must be positive!")
+>           return self
 >   
 >   # Instantiating the model with raw, untrusted JSON data
->   raw_data = {"employee_id": "404", "name": "Sarah"}
+>   raw_data = {"employee_id": "-404", "name": "   sarah   "}
+>   # This will throw a ValueError because employee_id is negative!
 >   sarah = Employee(**raw_data) 
->   print(sarah.employee_id)  # IDE autocomplete works here!
 >   ```
 > 
 > **3. Best Practices**
