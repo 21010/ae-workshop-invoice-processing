@@ -56,9 +56,30 @@ Before we write a single line of code, we must analyze the process as Engineers.
 ### Phase 1: Project Initialization
 
 <details>
-<summary><b>📚 Theory: Why reproducible environments? (Learn More)</b></summary>
+<summary><b>📚 Theory: Reproducible Environments & The `uv` Package Manager (Learn More)</b></summary>
 
-Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms to ensure every server runs the exact same code.
+**1. The Modern Standard (PEP 621)**
+In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
+
+**2. Introducing `uv`**
+To manage these modern projects, we use `uv`—an incredibly fast package manager built in Rust by Astral. It replaces `pip`, `venv`, `poetry`, and `pip-tools` entirely.
+*   **Installation:** 
+    *   *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+    *   *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
+*   **How it manages virtual environments:** When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
+*   **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_PREVIEW_FEATURES=malware-check` (Linux) or `$env:UV_PREVIEW_FEATURES="malware-check"` (Windows).
+
+**3. Basic `uv` Commands**
+*   `uv init` - Initializes a new project and creates the `pyproject.toml`.
+*   `uv add <package>` - Installs a package and adds it to the production dependencies.
+*   `uv add --dev <package>` - Installs a package only for local development/testing.
+*   `uv run <command>` - Automatically executes a command *inside* the isolated virtual environment. You never have to manually run `source .venv/bin/activate` again!
+
+**4. Anatomy of `pyproject.toml`**
+Here is how a modern, best-practice configuration looks:
+*   `[project]`: Defines the project metadata (name, version, python version requirement).
+*   `dependencies`: An array of strictly required production libraries (e.g., `requests`, `pydantic`). These are what gets shipped to the server.
+*   `[dependency-groups]`: Defines the `dev` array for local tools (e.g., `pytest`, `ruff`). By cleanly separating dev tools, we ensure our production Docker containers remain extremely small, fast, and secure.
 
 </details>
 
