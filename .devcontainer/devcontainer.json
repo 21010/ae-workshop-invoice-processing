@@ -44,6 +44,6 @@
       ]
     }
   },
-  "postStartCommand": "uvx --with fastapi --with uvicorn --with pydantic uvicorn mock_api.main:app --host 127.0.0.1 --port 8080",
+  "postStartCommand": "nohup uvx --with fastapi --with uvicorn --with pydantic uvicorn mock_api.main:app --host 127.0.0.1 --port 8080",
   "forwardPorts": [8080]
 }
