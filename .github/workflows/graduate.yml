@@ -1,0 +1,59 @@
+name: Auto-Grader & Certificate Generator
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit the certificate back to the repo
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Pytest (The Auto-Grader)
+        id: pytest
+        run: |
+          # The pipeline will fail here if the student hasn't finished the tests!
+          uv run pytest
+
+      - name: Generate Certificate
+        if: success() # Only runs if pytest passed!
+        run: |
+          if [ -f "CERTIFICATE.md" ]; then
+            echo "Certificate already exists! Skipping generation."
+            exit 0
+          fi
+
+          echo "# 🏆 Certificate of Completion" > CERTIFICATE.md
+          echo "" >> CERTIFICATE.md
+          echo "### Awarded to: **@${{ github.actor }}**" >> CERTIFICATE.md
+          echo "" >> CERTIFICATE.md
+          echo "This certifies that the developer has successfully engineered, tested, and deployed a modern 12-factor enterprise Python automation." >> CERTIFICATE.md
+          echo "" >> CERTIFICATE.md
+          echo "> *Validated automatically by GitHub Actions CI/CD.*" >> CERTIFICATE.md
+          echo "" >> CERTIFICATE.md
+          echo "![Achievement Unlocked](https://img.shields.io/badge/Achievement-Unlocked-success?style=for-the-badge&logo=python)" >> CERTIFICATE.md
+
+      - name: Commit Certificate to Repository
+        if: success()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add CERTIFICATE.md
+          # Only commit if CERTIFICATE.md was just created
+          git diff --staged --quiet || git commit -m "🎉 Award Certificate of Completion to @${{ github.actor }}"
+          git push
