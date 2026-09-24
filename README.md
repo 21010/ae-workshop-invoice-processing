@@ -450,4 +450,23 @@ Instead, modern applications output **Structured JSON Logs** to the terminal str
 4. **Run the bot:**
    Execute `uv run task.py`. Look at the terminal! You will see beautiful, machine-readable JSON logs that cloud dashboards can instantly query.
 
+### Phase 10: Enterprise Deployment (Azure Architecture)
+Now that your bot is perfectly engineered, how do you deploy it to production? Because we strictly followed the **12-Factor App** principles, this Python codebase is 100% portable. Here are the 4 standard ways to deploy this in a Microsoft Azure ecosystem:
+
+**1. On-Premises Server (Hybrid Cloud)**
+*   **How:** If the ERP system is locked behind a strict corporate firewall, run the bot on a local Windows Server using Task Scheduler (`uv run task.py`).
+*   **Telemetry:** Install the `azure-monitor-opentelemetry` package and add `configure_azure_monitor()` to your `task.py`. The bot will securely stream its structured JSON logs out of your private network directly into **Azure Application Insights**.
+
+**2. Azure Container Apps or AKS (Cloud Native)**
+*   **How:** Package the repository into a Docker container and deploy it to Azure Container Apps as a background job.
+*   **Telemetry:** The Azure infrastructure automatically captures the JSON `stdout` terminal stream we built in Phase 9. You get perfect Application Insights integration with **zero code changes**.
+
+**3. Azure Functions (Serverless)**
+*   **How:** Wrap the `processor.run()` logic inside a Time-Triggered Azure Function (e.g., scheduled to run every 15 minutes). 
+*   **Pros:** You only pay for the exact milliseconds the bot is processing invoices. If there are no invoices, it costs $0.
+*   **Cons:** Serverless functions have execution time limits (usually 10 minutes). If your bot needs to process 10,000 invoices in a single run, you would need to use Azure Durable Functions.
+
+**4. Azure Logic Apps (Low-Code Orchestration)**
+*   **How:** Sometimes the upstream ERP system requires complex, legacy XML SOAP authentication. Let a Logic App handle the messy trigger and authentication steps. The Logic App can fetch the data and then trigger your Python bot (hosted in an Azure Function) just to execute the heavy Pydantic math validation. 
+
 🎉 **Congratulations!** You have just engineered a modern, tested, and resilient Python automation!
