@@ -172,13 +172,27 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 ### Step 2: Code Quality & Pre-commit
 
 <details>
-<summary><b>📚 Theory: Shift-Left Security (Learn More)</b></summary>
+<summary><b>📚 Theory: Shift-Left Security & Tooling (Learn More)</b></summary>
 
-> **The Problem with Legacy Scripts**
-> In legacy RPA teams, code is often copy-pasted, poorly formatted, and deployed without security reviews. If a developer accidentally hardcodes Sarah's ERP password into the script and uploads it to GitHub, the company could be compromised.
+> **1. The Problem with Legacy Scripts**
+> In legacy RPA and scripting teams, code is often copy-pasted, poorly formatted, and deployed without security reviews. If a developer accidentally hardcodes Sarah's ERP password into a script and uploads it to GitHub, the entire company could be compromised.
 > 
-> **Shift-Left Security**
-> Modern engineering uses "Shift-Left Security". This means we catch errors and security flaws *before* they are ever committed to Git. By using a tool called `pre-commit`, we can force the computer to automatically run code formatters and security scanners every time we type `git commit`. If the code fails the scan, the commit is blocked!
+> **2. Shift-Left Security & Pre-commit Mechanics**
+> Modern engineering relies on **Shift-Left Security**—catching errors and security flaws as early as possible in the development lifecycle (shifting "left" on the timeline). We enforce this using a framework called `pre-commit`. 
+> 
+> When you type `git commit`, Git pauses and hands control to `pre-commit`. It runs a gauntlet of automated scanners against your code. If any scanner fails, the commit is instantly blocked. This guarantees that vulnerable or sloppy code physically cannot enter your repository.
+> 
+> **3. Preparing for CI/CD and AI Engineering**
+> By strictly enforcing these rules locally, you are preparing your codebase for Enterprise CI/CD pipelines (like GitHub Actions or Azure DevOps). Furthermore, clean, standardized, and fully-tested code is an absolute prerequisite for **AI Harness Engineering** (where autonomous AI agents write and refactor code on your behalf). AI models struggle with messy, unformatted spaghetti code, but thrive in strict environments.
+> 
+> **4. The Industry Standard Toolchain**
+> Our pre-commit pipeline executes in a specific "Fail-Fast" order using the best tools available in the Python ecosystem:
+> * **TruffleHog:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
+> * **Ruff (`check --fix` and `format`):** Built in Rust, Ruff is 10-100x faster than legacy tools like `flake8` and `black`. It automatically fixes syntax errors, removes unused imports, and enforces strict, uniform code formatting.
+> * **Bandit:** A static application security testing (SAST) tool designed to find common security issues in Python code (e.g., using `eval()` or weak cryptographic hashes).
+> * **Pyrefly:** An advanced static analysis tool that detects "code smells" and suggests modern Python refactoring patterns.
+> * **uv audit:** Scans your `uv.lock` file against vulnerability databases to ensure none of your installed dependencies have known security exploits (CVEs).
+> * **Pytest:** The industry standard testing framework. Running unit tests as the final pre-commit hook ensures developers cannot push code that breaks core business logic.
 
 </details>
 
