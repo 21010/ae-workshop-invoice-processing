@@ -282,10 +282,13 @@ Now that our environment is built, we need to protect it. We are going to set up
 > In Python, a folder is just a folder until you add an `__init__.py` file. This file tells Python, "Treat this directory as an importable module." Beyond just marking a directory, modern engineers use `__init__.py` to control the public API of their modules. For example, by putting `from .models import Invoice` inside `src/domain/__init__.py`, other files can simply run `from src.domain import Invoice` instead of digging into nested sub-files.
 > 
 > **3. Testing Categories (The Testing Pyramid)**
-> A robust automation project uses layers of tests:
-> * **Unit Tests (`tests/unit`):** Tests a single function or class in total isolation. These should run in milliseconds and never touch a network or database.
-> * **Integration Tests (`tests/integration`):** Tests how multiple components work together (e.g., Application orchestrator calling the Infrastructure). This is where we heavily use **Mocking** (faking API responses) so tests remain fast and reliable without hitting real servers.
-> * **End-to-End (E2E) Tests:** Tests the entire system from the user's perspective hitting the actual live ERP system.
+> A robust automation project uses multiple layers of tests to ensure stability:
+> * **Unit Tests (`tests/unit`):** Tests a single function or class in total isolation (e.g., verifying invoice math). These run in milliseconds and never touch a network or database.
+> * **Integration Tests (`tests/integration`):** Tests how multiple internal components interact (e.g., the Application orchestrator calling the Infrastructure). This is where we heavily use **Mocking** (faking API responses) so tests remain fast without hitting real servers.
+> * **System / End-to-End (E2E) Tests:** Tests the entire system from start to finish hitting the actual live (or staging) ERP system.
+> * **Smoke Tests:** A very fast subset of critical tests run immediately after deployment to ensure the application starts up and didn't "catch fire".
+> * **Regression Tests:** Tests specifically written to reproduce past bugs, ensuring that adding new features never breaks old fixes.
+> * **User Acceptance Tests (UAT):** Tests that validate the software actually solves the business problem (often mapped directly to Sarah's original requirements).
 > 
 > **4. Pytest Best Practices & `conftest.py`**
 > * **Naming Conventions:** Pytest will only discover your tests if the file starts with `test_` (e.g., `test_invoice.py`) and the function starts with `test_` (e.g., `def test_math_validation():`).
