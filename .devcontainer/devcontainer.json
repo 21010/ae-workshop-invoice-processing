@@ -44,6 +44,6 @@
       ]
     }
   },
-  "postStartCommand": "bash -c 'nohup uv run uvicorn mock_api.main:app --host 127.0.0.1 --port 8080 > /tmp/mock_api.log 2>&1 &'",
+  "postStartCommand": "bash -c 'nohup uvx run uvicorn mock_api.main:app --host 127.0.0.1 --port 8080 > /tmp/mock_api.log 2>&1 &'",
   "forwardPorts": [8080]
 }
