@@ -186,11 +186,10 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 
 Now that our environment is built, we need to protect it. We are going to set up automated guardrails so that nobody on your team can ever commit sloppy or insecure code.
 
-1. **Initialize Git and enforce the modern branch standard:**
-   First, we must turn this empty folder into a Git repository. We also rename the default branch from the legacy `master` to the modern industry standard `main`.
+1. **Enforce the modern 'main' branch standard:**
+   When you ran `uv init` in Step 1, it automatically initialized a Git repository for you behind the scenes. However, older Git configurations often default to the legacy `master` branch. Let's rename it to the modern industry standard `main`.
    
    ```bash
-   git init
    git branch -M main
    ```
 
