@@ -31,22 +31,20 @@ Welcome to the hands-on guided project! In this session, you will evolve from tr
 
 Sarah described her problem using a specific, fragile technical solution (a UI-clicking macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
 
-### As-Is Process (BPMN)
+### The Manual Process (As-Is)
+*Here is how Sarah's team currently processes invoices manually:*
 
-```mermaid
-flowchart TD
-    Start((Start)) --> Fetch[Fetch Pending Invoices from ERP]
-    Fetch --> Loop{For each Invoice}
-    Loop --> Validate{Is Total == Sum of Items?}
-    Validate -- No --> Reject[Flag as Data Error]
-    Validate -- Yes --> CheckAmount{Is Total > 10,000?}
-    CheckAmount -- Yes --> Manual[Send for Manual Review]
-    CheckAmount -- No --> Approve[Approve in ERP]
-    Reject --> Next[Next Invoice]
-    Manual --> Next
-    Approve --> Next
-    Next --> Loop
-```
+1. Open the Google Chrome browser and navigate to the internal ERP portal.
+2. Type in the username and password to log in.
+3. Click on the "Finance Dashboard" tab.
+4. Click on "Pending Vendor Invoices" to load the grid.
+5. For each invoice in the list:
+   * Open the Windows Calculator app.
+   * Add up every single line item on the screen manually.
+   * Check if the calculator total matches the "Total Amount" on the screen (If it doesn't, skip it).
+   * Check if the Total Amount is greater than $10,000 (If it is, skip it so the manager can review it).
+   * If the math is correct and it is under $10,000, click the green "Approve" button.
+6. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
 
 ---
 
@@ -87,6 +85,24 @@ Before writing code, we must translate the raw business request into an engineer
    * **The Infrastructure Layer:** This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops.
    * **The Domain Layer:** This layer is strictly isolated from the network. It contains the data models and the validation rules. 
    * **The Application Layer:** This is the orchestrator. It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
+
+4. **Design the Automated Workflow (To-Be)**
+   Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
+
+   ```mermaid
+   flowchart TD
+       Start((Trigger: task.py)) --> Fetch[Infrastructure: GET /api/invoices]
+       Fetch --> Loop{Application: For each Invoice}
+       Loop --> Validate{Domain: Pydantic Validation}
+       Validate -- Math Error --> Reject[Application: Log Error & Skip]
+       Validate -- Valid --> CheckAmount{Application: Is Total > $10,000?}
+       CheckAmount -- Yes --> Manual[Application: Log Warning & Skip]
+       CheckAmount -- No --> Approve[Infrastructure: POST /api/approve]
+       Reject --> Next[Next Invoice]
+       Manual --> Next
+       Approve --> Next
+       Next --> Loop
+   ```
 
 ### Phase 1: Project Initialization
 
