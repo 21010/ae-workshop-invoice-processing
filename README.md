@@ -54,39 +54,42 @@ Sarah's manual process is slow, error-prone, and mind-numbing. We are not going 
 
 Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
 
-### Phase 0: Process Analysis & Architecture Design
+### Step 0: Process Analysis & Architecture Design
 
 <details>
 <summary><b>📚 Theory: Business Analysis & Domain-Driven Design (Learn More)</b></summary>
 
-> **1. Extracting the Real Problem**
-> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to extract the underlying *business problem*. We must ask: What are we trying to achieve? What are the failure conditions? What happens if the upstream data is corrupt?
+> **1. Understand the Business Domain**
+> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions?
 > 
-> **2. The DDD Approach (Ubiquitous Language)**
-> In Domain-Driven Design (DDD), the first step is to establish a "Ubiquitous Language" - a shared vocabulary between the developers and the business experts. If the business talks about "Invoices", "Line Items", and "Approval Thresholds", those exact terms must become the core components (models) in our code.
+> **2. Establish a Ubiquitous Language**
+> The most critical rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared vocabulary between developers and business experts. If the business talks about "Invoices", "Line Items", and "Approval Thresholds", those exact terms must become the core components (models) in our code.
 > 
-> **3. Bounded Contexts & Layering**
-> DDD separates the core business rules from the technical implementation. The business rules for calculating invoice mathematics do not care if the data came from a REST API, an SQL database, or a flat file. By cleanly separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts and changes in the API.
+> **3. Define Bounded Contexts & Entities**
+> We must isolate our specific area of responsibility (the Bounded Context). Inside this context, we define our Entities (objects with a distinct identity, like an Invoice) and Value Objects (attributes without an identity, like a Line Item amount). 
+> 
+> **4. Hexagonal Architecture (Ports and Adapters)**
+> DDD separates the core business rules from the technical implementation. The mathematical validation of an Invoice does not care if the data came from a REST API or a database. By cleanly separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts.
 
 </details>
 
 **🔨 Implementation Steps:**
 
-Before writing code, we must translate the raw business request into an engineering plan. Let's walk through this process:
+Before writing code, we must translate Sarah's request into a strict DDD engineering plan:
 
-1. **Deconstruct the Business Request**
-   The business asked us to "automate the invoice approval process." As an engineer, you must break this down into discrete, actionable requirements. First, we need to acquire the data (fetch pending invoices). Next, we must verify the integrity of the data (validate that the sum of line items equals the total amount). Finally, we must apply the business rule (if the amount is under $10,000, approve it in the ERP system; otherwise, flag it for manual review).
+1. **Understand the Domain & Identify Risks:**
+   * *The Core Workflow:* Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
+   * *Domain Risks:* The upstream system occasionally sends corrupted payloads where the math does not add up. *Mitigation:* We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic.
+   * *Infrastructure Risks:* The target ERP API is known to drop connections and throw 503 errors. *Mitigation:* We will isolate all API calls and wrap them in an exponential backoff retry loop.
 
-2. **Identify Risks and Design Mitigations**
-   We know that real-world systems fail. We must ask: *What can go wrong?* 
-   * *The Network Risk:* The target ERP API is known to drop connections and throw 503 errors. If we ignore this, our bot will crash constantly. *Mitigation:* We will isolate all API calls and wrap them in an exponential backoff retry loop.
-   * *The Data Risk:* The upstream system occasionally sends corrupted payloads where the math does not add up. *Mitigation:* We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic.
+2. **Define the Ubiquitous Language & Entities:**
+   Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
 
-3. **Map the Architecture (DDD)**
-   With our requirements and mitigations defined, we can map them to the Domain-Driven Design (DDD) layers. We will not write a single, procedural script. Instead, we divide the responsibilities:
+3. **Map the Architecture Layers:**
+   We will not write a single, procedural script. Instead, we divide the responsibilities:
    * **The Infrastructure Layer:** This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops.
-   * **The Domain Layer:** This layer is strictly isolated from the network. It contains the data models and the validation rules. 
-   * **The Application Layer:** This is the orchestrator. It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
+   * **The Domain Layer:** This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules. 
+   * **The Application Layer:** This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
 
 4. **Design the Automated Workflow (To-Be)**
    Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
@@ -107,7 +110,7 @@ Before writing code, we must translate the raw business request into an engineer
        Next --> Loop
    ```
 
-### Phase 1: Project Initialization
+### Step 1: Project Initialization
 
 <details>
 <summary><b>📚 Theory: Reproducible Environments & The `uv` Package Manager (Learn More)</b></summary>
@@ -163,7 +166,7 @@ Before writing code, we must translate the raw business request into an engineer
 4. **Analyze the Configuration:**
    Open the newly generated `pyproject.toml` file. Notice how `uv` automatically tracked your dependencies. This file is the single source of truth for your bot's environment!
 
-### Phase 2: Code Quality & Pre-commit
+### Step 2: Code Quality & Pre-commit
 
 <details>
 <summary><b>📚 Theory: Shift-Left Security (Learn More)</b></summary>
@@ -222,12 +225,12 @@ Before writing code, we must translate the raw business request into an engineer
 
 3. **Install the hooks:** `uv run pre-commit install`
 
-### Phase 3: Project Structure (DDD)
+### Step 3: Project Structure (DDD)
 
 <details>
 <summary><b>📚 Theory: Domain-Driven Isolation (Learn More)</b></summary>
 
-> Based on our Phase 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (unstable APIs). This guarantees our code remains clean and testable.
+> Based on our Step 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (unstable APIs). This guarantees our code remains clean and testable.
 
 </details>
 
@@ -253,22 +256,22 @@ Before writing code, we must translate the raw business request into an engineer
    ```text
    📦 project-root
    ┣ 📂 src/
-   ┃ ┣ 📂 domain/         # Phase 4: Core business logic and data validation (Pydantic)
+   ┃ ┣ 📂 domain/         # Step 4: Core business logic and data validation (Pydantic)
    ┃ ┃ ┗ 📜 __init__.py
-   ┃ ┣ 📂 infrastructure/ # Phase 5: External API clients and network resilience (Tenacity)
+   ┃ ┣ 📂 infrastructure/ # Step 5: External API clients and network resilience (Tenacity)
    ┃ ┃ ┗ 📜 __init__.py
-   ┃ ┗ 📂 application/    # Phase 6: The orchestrator that glues Domain & Infrastructure together
+   ┃ ┗ 📂 application/    # Step 6: The orchestrator that glues Domain & Infrastructure together
    ┃   ┗ 📜 __init__.py
    ┣ 📂 tests/
    ┃ ┣ 📂 unit/           # Fast tests for business logic (no network required)
    ┃ ┃ ┗ 📜 __init__.py
    ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
    ┃   ┗ 📜 __init__.py
-   ┣ 📜 .pre-commit-config.yaml # Phase 2: Security and formatting guardrails
-   ┗ 📜 pyproject.toml          # Phase 1: Environment and dependency definitions
+   ┣ 📜 .pre-commit-config.yaml # Step 2: Security and formatting guardrails
+   ┗ 📜 pyproject.toml          # Step 1: Environment and dependency definitions
    ```
 
-### Phase 4: Building the Domain (Data Validation)
+### Step 4: Building the Domain (Data Validation)
 
 <details>
 <summary><b>📚 Theory: Defensive Data Modeling (Learn More)</b></summary>
@@ -333,21 +336,21 @@ Before writing code, we must translate the raw business request into an engineer
 
 3. **Run the test:** `uv run pytest -m unit`
 
-### Phase 5: Infrastructure (The Unstable External Services)
+### Step 5: Infrastructure (The Unstable External Services)
 
 <details>
 <summary><b>📚 Theory: 12-Factor Backing Services & Resilience (Learn More)</b></summary>
 
 > In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the unpredictable outside world (APIs, databases, file systems). 
 > 
-> In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
+> In Step 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
 
 </details>
 
 **🔨 Implementation Steps:**
 
 1. **Create `src/infrastructure/api_client.py`:**
-   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Phase 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
+   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Step 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -372,7 +375,7 @@ Before writing code, we must translate the raw business request into an engineer
    
    </details>
 
-### Phase 6: Application Layer (The Orchestrator)
+### Step 6: Application Layer (The Orchestrator)
 
 <details>
 <summary><b>📚 Theory: SOLID Dependency Inversion (Learn More)</b></summary>
@@ -420,14 +423,14 @@ Before writing code, we must translate the raw business request into an engineer
    
    </details>
 
-### Phase 7: Integration Testing (No Network Required!)
+### Step 7: Integration Testing (No Network Required!)
 
 <details>
 <summary><b>📚 Theory: CUPID Testability & Mocking (Learn More)</b></summary>
 
 > Testing automation bots is difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
 > 
-> Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
+> Because our `InvoiceProcessor` in Step 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
 
 </details>
 
@@ -476,7 +479,7 @@ Before writing code, we must translate the raw business request into an engineer
    Execute `uv run pytest -m integration` in your terminal. 
    *(Note: If Pytest throws a yellow warning about "unknown markers", try creating a `pytest.ini` file in the root directory to officially register them!)*
 
-### Phase 8: The Entry Point (Running the Bot)
+### Step 8: The Entry Point (Running the Bot)
 
 <details>
 <summary><b>📚 Theory: Dependency Injection (Learn More)</b></summary>
@@ -528,7 +531,7 @@ Before writing code, we must translate the raw business request into an engineer
    uv run task.py
    ```
 
-### Phase 9: Observability (Replacing the Legacy log.html)
+### Step 9: Observability (Replacing the Legacy log.html)
 
 <details>
 <summary><b>📚 Theory: 12-Factor Telemetry Streams (Learn More)</b></summary>
@@ -625,7 +628,7 @@ Before writing code, we must translate the raw business request into an engineer
 4. **Run the bot:**
    Execute `uv run task.py`. Look at the terminal! You will see machine-readable JSON logs that cloud dashboards can query.
 
-### Phase 10: Enterprise Deployment (Azure Architecture)
+### Step 10: Enterprise Deployment (Azure Architecture)
 
 Now that your bot is engineered, how do you deploy it to production? Because we followed the **12-Factor App** principles, this Python codebase is 100% portable. Here are the 4 standard ways to deploy this in a Microsoft Azure ecosystem:
 
@@ -637,7 +640,7 @@ Now that your bot is engineered, how do you deploy it to production? Because we 
 **2. Azure Container Apps or AKS (Cloud Native)**
 
 * **How:** Package the repository into a Docker container and deploy it to Azure Container Apps as a background job.
-* **Telemetry:** The Azure infrastructure automatically captures the JSON `stdout` terminal stream we built in Phase 9. You get Application Insights integration with **zero code changes**.
+* **Telemetry:** The Azure infrastructure automatically captures the JSON `stdout` terminal stream we built in Step 9. You get Application Insights integration with **zero code changes**.
 
 **3. Azure Functions (Serverless)**
 
