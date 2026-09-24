@@ -368,18 +368,35 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    ┗ 📜 pyproject.toml          # Step 1: Environment and dependency definitions
    ```
 
-### Step 4: Building the Domain (Data Validation)
+### Step 4: Forging the Domain (Defending Against Corrupted Data)
 
 <details>
-<summary><b>📚 Theory: Defensive Data Modeling (Learn More)</b></summary>
+<summary><b>📚 Theory: Defensive Data Modeling & Pydantic (Learn More)</b></summary>
 
-> Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
+> **1. The Flaw of Generic Dictionaries**
+> In legacy automation, developers often passed raw JSON data around using generic Python dictionaries (e.g., `invoice["total_amount"]`). This is dangerous. If the ERP system unexpectedly changes the API and sends a string `"100.00"` instead of a float `100.00`, your bot will crash deep inside the code during a math operation.
+> 
+> **2. The Pydantic Solution**
+> Pydantic is the industry standard library for data validation. Instead of dictionaries, we define our Domain entities as strict Python classes using `BaseModel`. 
+> * **Automatic Type Casting:** If Pydantic expects a `float` but receives the string `"100.00"`, it will automatically convert it to a float. If it receives something uncastable (like `"UNKNOWN"`), it instantly throws a loud validation error *at the boundary* of the application, rather than failing silently later.
+> * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
+> * **Custom Validators:** You can write custom python methods decorated with `@model_validator` to enforce complex business rules (e.g., "Does the sum of all line items equal the total amount?").
+> 
+> **3. Best Practices**
+> * Never use raw dictionaries for business logic. Always parse external JSON directly into a Pydantic model immediately after downloading it.
+> * Keep your models "pure". A Pydantic model should only validate data; it should never make database queries or API calls itself.
+> 
+> **4. Preparation for AI Agents**
+> Strict data modeling is the absolute prerequisite for building **AI Agents** or LLM harnesses. Large Language Models often hallucinate or generate slightly malformed JSON. By forcing the LLM's output through a strict Pydantic model, you guarantee that your underlying Python code never receives corrupted AI output. In fact, modern AI frameworks (like LangChain or OpenAI's SDK) rely on Pydantic natively to force the LLM to adhere to specific schemas!
 
 </details>
 
 **🔨 Implementation Steps:**
 
-1. **Create `src/domain/models.py`:**
+Sarah's business requirement explicitly stated that the ERP math is sometimes corrupted. We cannot trust the incoming data. We are going to build an impenetrable wall in our `domain` layer that strictly validates every single invoice before the orchestrator is even allowed to look at it.
+
+1. **Create the Data Models (`src/domain/models.py`):**
+   *What are we doing?* We are creating the strict definitions for `LineItem` and `Invoice`. We are also writing a custom validator to explicitly perform the math check that Sarah requested.
    *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
    
    <details>
@@ -409,7 +426,8 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    
    </details>
 
-2. **Write Unit Tests (`tests/unit/test_domain.py`):**
+2. **Prove the Defense Works (`tests/unit/test_domain.py`):**
+   *What are we doing?* We are practicing Test-Driven Development (TDD). Before we connect to the real API, we write a lightning-fast unit test simulating a corrupted invoice to definitively prove that our Pydantic model will reject it.
    *Challenge: Write a Pytest function labeled `@pytest.mark.unit`. Create an invoice with bad math and use `with pytest.raises(ValueError):` to prove your validation catches it!*
    
    <details>
@@ -431,7 +449,11 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    
    </details>
 
-3. **Run the test:** `uv run pytest -m unit`
+3. **Run the Defense Test:** 
+   Execute the unit test to verify your math validator works perfectly.
+   ```bash
+   uv run pytest -m unit
+   ```
 
 ### Step 5: Infrastructure (The Unstable External Services)
 
