@@ -382,16 +382,20 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 > * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
 > * **Custom Validators:** You can write custom Python methods decorated with `@model_validator` to enforce complex business rules. There are two critical modes:
 >   * `mode="before"`: Runs *before* Pydantic does its automatic type casting. The data you receive is a raw dictionary. Use this if you need to mutate or clean up the raw payload before parsing (e.g., stripping whitespace).
->   * `mode="after"`: Runs *after* Pydantic has validated all types. The data you receive is a fully instantiated Python object (e.g., `self.employee_id` is guaranteed to be an `int`). **This is best for business logic.**
+>   * `mode="after"`: Runs *after* Pydantic has validated all types. The data you receive is a fully instantiated Python object. **This is best for business logic.**
+> * **Field Constraints & Aliases:** Using the `Field()` function, you can enforce strict mathematical constraints directly on attributes without writing custom methods (e.g., `Field(ge=0)` ensures a number is greater than or equal to zero). You can also use `alias` to map messy external API keys (like `empId`) to clean internal Python variables (like `employee_id`).
 > 
->   *Example: Defining a strict Domain Model with Validators*
+>   *Example: Defining a strict Domain Model with Fields and Validators*
 >   ```python
->   from pydantic import BaseModel, model_validator
+>   from pydantic import BaseModel, model_validator, Field
 > 
 >   class Employee(BaseModel):
->       employee_id: int        # Automatically casts the string "123" to int 123
+>       # Use alias for bad external keys, and gt=0 to enforce positive numbers
+>       employee_id: int = Field(alias="empId", gt=0)
 >       name: str
->       is_active: bool = True  # Provides a default value if missing
+>       # Constraints: age must be between 18 and 65
+>       age: int = Field(ge=18, le=65)
+>       is_active: bool = Field(default=True)
 >
 >       @model_validator(mode="before")
 >       @classmethod
@@ -400,18 +404,14 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 >           if "name" in data and isinstance(data["name"], str):
 >               data["name"] = data["name"].strip().title()
 >           return data
->
->       @model_validator(mode="after")
->       def enforce_business_rules(self):
->           # Runs last! We safely use the fully cast object.
->           if self.employee_id <= 0:
->               raise ValueError("Employee ID must be positive!")
->           return self
 >   
->   # Instantiating the model with raw, untrusted JSON data
->   raw_data = {"employee_id": "-404", "name": "   sarah   "}
->   # This will throw a ValueError because employee_id is negative!
+>   # Instantiating the model with raw, messy external JSON data
+>   raw_data = {"empId": "404", "name": "   sarah   ", "age": "25"}
 >   sarah = Employee(**raw_data) 
+>   
+>   # The object is now perfectly clean and safe to use!
+>   # sarah.employee_id -> 404 (int)
+>   # sarah.name -> "Sarah" (str)
 >   ```
 > 
 > **3. Best Practices**
