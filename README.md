@@ -58,28 +58,29 @@ Before we write a single line of code, we must analyze the process as Engineers.
 <details>
 <summary><b>📚 Theory: Reproducible Environments & The `uv` Package Manager (Learn More)</b></summary>
 
-**1. The Modern Standard (PEP 621)**
-In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
-
-**2. Introducing `uv`**
-To manage these modern projects, we use `uv`—an incredibly fast package manager built in Rust by Astral. It replaces `pip`, `venv`, `poetry`, and `pip-tools` entirely.
-*   **Installation:** 
-    *   *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
-    *   *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
-*   **How it manages virtual environments:** When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
-*   **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_PREVIEW_FEATURES=malware-check` (Linux) or `$env:UV_PREVIEW_FEATURES="malware-check"` (Windows).
-
-**3. Basic `uv` Commands**
-*   `uv init` - Initializes a new project and creates the `pyproject.toml`.
-*   `uv add <package>` - Installs a package and adds it to the production dependencies.
-*   `uv add --dev <package>` - Installs a package only for local development/testing.
-*   `uv run <command>` - Automatically executes a command *inside* the isolated virtual environment. You never have to manually run `source .venv/bin/activate` again!
-
-**4. Anatomy of `pyproject.toml`**
-Here is how a modern, best-practice configuration looks:
-*   `[project]`: Defines the project metadata (name, version, python version requirement).
-*   `dependencies`: An array of strictly required production libraries (e.g., `requests`, `pydantic`). These are what gets shipped to the server.
-*   `[dependency-groups]`: Defines the `dev` array for local tools (e.g., `pytest`, `ruff`). By cleanly separating dev tools, we ensure our production Docker containers remain extremely small, fast, and secure.
+> [!NOTE]
+> **1. The Modern Standard (PEP 621)**
+> In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
+>
+> **2. Introducing `uv`**
+> To manage these modern projects, we use `uv`—an incredibly fast package manager built in Rust by Astral. It replaces `pip`, `venv`, `poetry`, and `pip-tools` entirely.
+> *   **Installation:** 
+>     *   *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+>     *   *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
+> *   **How it manages virtual environments:** When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
+> *   **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_PREVIEW_FEATURES=malware-check` (Linux) or `$env:UV_PREVIEW_FEATURES="malware-check"` (Windows).
+>
+> **3. Basic `uv` Commands**
+> *   `uv init` - Initializes a new project and creates the `pyproject.toml`.
+> *   `uv add <package>` - Installs a package and adds it to the production dependencies.
+> *   `uv add --dev <package>` - Installs a package only for local development/testing.
+> *   `uv run <command>` - Automatically executes a command *inside* the isolated virtual environment. You never have to manually run `source .venv/bin/activate` again!
+>
+> **4. Anatomy of `pyproject.toml`**
+> Here is how a modern, best-practice configuration looks:
+> *   `[project]`: Defines the project metadata (name, version, python version requirement).
+> *   `dependencies`: An array of strictly required production libraries (e.g., `requests`, `pydantic`). These are what gets shipped to the server.
+> *   `[dependency-groups]`: Defines the `dev` array for local tools (e.g., `pytest`, `ruff`). By cleanly separating dev tools, we ensure our production Docker containers remain extremely small, fast, and secure.
 
 </details>
 
@@ -106,7 +107,8 @@ Here is how a modern, best-practice configuration looks:
 <details>
 <summary><b>📚 Theory: Shift-Left Security (Learn More)</b></summary>
 
-We want to automatically format our code and catch security issues before they are ever committed to Git. This guarantees that bad or vulnerable code never enters the repository.
+> [!NOTE]
+> We want to automatically format our code and catch security issues before they are ever committed to Git. This guarantees that bad or vulnerable code never enters the repository.
 
 </details>
 
@@ -160,7 +162,8 @@ We want to automatically format our code and catch security issues before they a
 <details>
 <summary><b>📚 Theory: Domain-Driven Isolation (Learn More)</b></summary>
 
-Based on our Phase 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (flaky APIs). This guarantees our code remains clean and testable.
+> [!NOTE]
+> Based on our Phase 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (flaky APIs). This guarantees our code remains clean and testable.
 
 </details>
 
@@ -201,7 +204,8 @@ Based on our Phase 0 design, we must construct the architecture that isolates ou
 <details>
 <summary><b>📚 Theory: Defensive Data Modeling (Learn More)</b></summary>
 
-Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By strictly defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
+> [!NOTE]
+> Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By strictly defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
 
 </details>
 
@@ -262,9 +266,10 @@ Data modeling is arguably the most important step in automation. Generic diction
 <details>
 <summary><b>📚 Theory: 12-Factor Backing Services & Resilience (Learn More)</b></summary>
 
-In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the messy, unpredictable outside world (APIs, databases, file systems). 
-
-In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
+> [!NOTE]
+> In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the messy, unpredictable outside world (APIs, databases, file systems). 
+>
+> In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
 
 </details>
 
@@ -299,9 +304,10 @@ In Phase 0, we identified that the target ERP system is unstable (throws 503 err
 <details>
 <summary><b>📚 Theory: SOLID Dependency Inversion (Learn More)</b></summary>
 
-The Application Layer is the "Conductor" of the orchestra. It doesn't know *how* to validate math (the Domain does that), and it doesn't know *how* to make HTTP requests (the Infrastructure does that). It simply orchestrates the flow and applies high-level business rules (like our $10,000 threshold limit).
-
-The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
+> [!NOTE]
+> The Application Layer is the "Conductor" of the orchestra. It doesn't know *how* to validate math (the Domain does that), and it doesn't know *how* to make HTTP requests (the Infrastructure does that). It simply orchestrates the flow and applies high-level business rules (like our $10,000 threshold limit).
+>
+> The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
 
 </details>
 
@@ -345,9 +351,10 @@ The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator import
 <details>
 <summary><b>📚 Theory: CUPID Testability & Mocking (Learn More)</b></summary>
 
-Testing automation bots is notoriously difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved ultimate **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
-
-Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
+> [!NOTE]
+> Testing automation bots is notoriously difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved ultimate **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
+>
+> Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
 
 </details>
 
@@ -398,7 +405,8 @@ Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `
 <details>
 <summary><b>📚 Theory: Dependency Injection (Learn More)</b></summary>
 
-We have built our architecture, but we need a lightweight trigger to actually start the process. In traditional scripts, everything is jammed into one massive file. In our DDD architecture, the entry point simply wires the layers together using **Dependency Injection** and hits "Go".
+> [!NOTE]
+> We have built our architecture, but we need a lightweight trigger to actually start the process. In traditional scripts, everything is jammed into one massive file. In our DDD architecture, the entry point simply wires the layers together using **Dependency Injection** and hits "Go".
 
 </details>
 
@@ -447,9 +455,10 @@ We have built our architecture, but we need a lightweight trigger to actually st
 <details>
 <summary><b>📚 Theory: 12-Factor Telemetry Streams (Learn More)</b></summary>
 
-Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern in the cloud because containers are ephemeral (they get deleted when finished). 
-
-Instead, modern applications output **Structured JSON Logs** to the terminal stream. Log routers (like Datadog, Splunk, or Promtail) capture this stream automatically.
+> [!NOTE]
+> Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern in the cloud because containers are ephemeral (they get deleted when finished). 
+>
+> Instead, modern applications output **Structured JSON Logs** to the terminal stream. Log routers (like Datadog, Splunk, or Promtail) capture this stream automatically.
 
 </details>
 
