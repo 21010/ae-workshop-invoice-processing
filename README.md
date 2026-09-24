@@ -365,4 +365,89 @@ We have built our architecture, but we need a lightweight trigger to actually st
    uv run task.py
    ```
 
+### Phase 9: Observability (Replacing the Legacy log.html)
+Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern in the cloud because containers are ephemeral (they get deleted when finished). 
+
+Instead, modern applications output **Structured JSON Logs** to the terminal stream. Log routers (like Datadog, Splunk, or Promtail) capture this stream automatically.
+
+1. **Add the modern logging library:**
+   ```bash
+   uv add structlog
+   ```
+2. **Update your Orchestrator (`src/application/processor.py`):**
+   *Challenge: Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context in the JSON payload!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import structlog
+   from src.domain.models import Invoice
+   from typing import Protocol
+
+   logger = structlog.get_logger()
+
+   class InvoiceAPIClient(Protocol):
+       def fetch_pending_invoices(self) -> list[Invoice]: ...
+       def approve_invoice(self, invoice_id: str) -> bool: ...
+
+   class InvoiceProcessor:
+       def __init__(self, api_client: InvoiceAPIClient):
+           self.api_client = api_client
+           self.threshold = 10000.0
+
+       def run(self):
+           invoices = self.api_client.fetch_pending_invoices()
+           logger.info("fetched_invoices", count=len(invoices))
+
+           for inv in invoices:
+               # Bind the ID to the logger so it attaches to all subsequent logs!
+               log = logger.bind(invoice_id=inv.id)
+               log.info("processing_invoice")
+               
+               if inv.total_amount > self.threshold:
+                   log.warning("manual_review_required", amount=inv.total_amount)
+               else:
+                   self.api_client.approve_invoice(inv.id)
+                   log.info("invoice_approved")
+   ```
+   </details>
+
+3. **Update your Entry Point (`task.py`):**
+   *Challenge: Configure `structlog` to output as JSON with an ISO timestamp.*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import structlog
+   from src.infrastructure.api_client import FastAPIClient
+   from src.application.processor import InvoiceProcessor
+
+   def main():
+       # Configure the 12-Factor JSON log stream
+       structlog.configure(
+           processors=[
+               structlog.processors.TimeStamper(fmt="iso"),
+               structlog.processors.JSONRenderer()
+           ]
+       )
+       
+       logger = structlog.get_logger()
+       logger.info("bot_starting")
+       
+       api_client = FastAPIClient()
+       processor = InvoiceProcessor(api_client)
+       processor.run()
+       
+       logger.info("bot_finished")
+
+   if __name__ == "__main__":
+       main()
+   ```
+   </details>
+
+4. **Run the bot:**
+   Execute `uv run task.py`. Look at the terminal! You will see beautiful, machine-readable JSON logs that cloud dashboards can instantly query.
+
 🎉 **Congratulations!** You have just engineered a modern, tested, and resilient Python automation!
