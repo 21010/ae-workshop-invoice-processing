@@ -95,16 +95,16 @@ Before writing code, we must translate Sarah's request into a strict DDD enginee
    Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
 
    ```mermaid
-   flowchart TD
-       Start((Trigger: task.py)) --> Fetch[Infrastructure: GET /api/invoices]
+   flowchart LR
+       Start((Trigger: task.py)) --> Fetch(Infrastructure: GET /api/invoices)
        Fetch --> Loop{Application: More Invoices?}
        Loop -- Yes --> Validate{Domain: Pydantic Validation}
        Loop -- No --> End((End: Complete))
-       Validate -- Math Error --> Reject[Application: Log Error & Skip]
+       Validate -- Math Error --> Reject(Application: Log Error & Skip)
        Validate -- Valid --> CheckAmount{Application: Is Total > $10,000?}
-       CheckAmount -- Yes --> Manual[Application: Log Warning & Skip]
-       CheckAmount -- No --> Approve[Infrastructure: POST /api/approve]
-       Reject --> Next[Next Invoice]
+       CheckAmount -- Yes --> Manual(Application: Log Warning & Skip)
+       CheckAmount -- No --> Approve(Infrastructure: POST /api/approve)
+       Reject --> Next(Next Invoice)
        Manual --> Next
        Approve --> Next
        Next --> Loop
