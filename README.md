@@ -292,7 +292,23 @@ Now that our environment is built, we need to protect it. We are going to set up
 > 
 > **4. Pytest Best Practices & `conftest.py`**
 > * **Naming Conventions:** Pytest will only discover your tests if the file starts with `test_` (e.g., `test_invoice.py`) and the function starts with `test_` (e.g., `def test_math_validation():`).
-> * **The `conftest.py` File:** If you have data (like a fake test invoice) that you need across multiple test files, you put it in a file named `conftest.py` as a "Fixture". Pytest automatically injects these fixtures into any test that asks for them, keeping your code incredibly DRY (Don't Repeat Yourself).
+> * **The `conftest.py` File:** If you have data (like a fake test invoice) that you need across multiple test files, you put it in a file named `conftest.py` as a "Fixture". Pytest automatically injects these fixtures into any test function that asks for them by name, keeping your code incredibly DRY (Don't Repeat Yourself).
+> 
+>   *Example `conftest.py`:*
+>   ```python
+>   import pytest
+> 
+>   @pytest.fixture
+>   def fake_invoice():
+>       return {"id": "INV-100", "total": 500}
+>   ```
+>   
+>   *Example Test (`test_invoice.py`):*
+>   ```python
+>   def test_invoice_total(fake_invoice):
+>       # Pytest automatically passes the dictionary here!
+>       assert fake_invoice["total"] == 500
+>   ```
 > 
 > **5. Setting up VS Code for Pytest**
 > To run tests natively inside the VS Code "Testing" sidebar, you must create a `.vscode/settings.json` file telling the editor to use Pytest instead of the default `unittest` framework.
