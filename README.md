@@ -54,7 +54,13 @@ Before we write a single line of code, we must analyze the process as Engineers.
     3.  **Application:** The orchestrator that glues them together.
 
 ### Phase 1: Project Initialization
-Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms.
+
+<details>
+<summary><b>📚 Theory: Why reproducible environments? (Learn More)</b></summary>
+
+Modern Python relies on isolated, reproducible environments. We will use `uv` (a blazing-fast package manager) instead of heavy RPA control rooms to ensure every server runs the exact same code.
+
+</details>
 
 1. **Initialize the project in the terminal:**
    ```bash
@@ -74,7 +80,13 @@ Modern Python relies on isolated, reproducible environments. We will use `uv` (a
    Open the newly generated `pyproject.toml` file. Notice how `uv` automatically tracked your dependencies. This file is the single source of truth for your bot's environment!
 
 ### Phase 2: Code Quality & Pre-commit
-We want to automatically format our code and catch security issues before they are ever committed to Git.
+
+<details>
+<summary><b>📚 Theory: Shift-Left Security (Learn More)</b></summary>
+
+We want to automatically format our code and catch security issues before they are ever committed to Git. This guarantees that bad or vulnerable code never enters the repository.
+
+</details>
 
 1. **Initialize Git and enforce the 'main' branch standard:**
    ```bash
@@ -121,7 +133,13 @@ We want to automatically format our code and catch security issues before they a
 3. **Install the hooks:** `uv run pre-commit install`
 
 ### Phase 3: Project Structure (DDD)
-Based on our Phase 0 design, we must construct the architecture that isolates our business logic from the flaky APIs.
+
+<details>
+<summary><b>📚 Theory: Domain-Driven Isolation (Learn More)</b></summary>
+
+Based on our Phase 0 design, we must construct the architecture that isolates our core business rules (Domain) from the unpredictable outside world (flaky APIs). This guarantees our code remains clean and testable.
+
+</details>
 
 1. **Create the directories (Windows PowerShell):**
    ```powershell
@@ -155,7 +173,13 @@ Based on our Phase 0 design, we must construct the architecture that isolates ou
    ```
 
 ### Phase 4: Building the Domain (Data Validation)
+
+<details>
+<summary><b>📚 Theory: Defensive Data Modeling (Learn More)</b></summary>
+
 Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By strictly defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
+
+</details>
 
 1. **Create `src/domain/models.py`:**
    *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
@@ -209,9 +233,15 @@ Data modeling is arguably the most important step in automation. Generic diction
 3. **Run the test:** `uv run pytest -m unit`
 
 ### Phase 5: Infrastructure (The Flaky Outside World)
+
+<details>
+<summary><b>📚 Theory: 12-Factor Backing Services & Resilience (Learn More)</b></summary>
+
 In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the messy, unpredictable outside world (APIs, databases, file systems). 
 
-*Theory Link:* In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
+In Phase 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
+
+</details>
 
 1. **Create `src/infrastructure/api_client.py`:**
    *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Phase 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
@@ -239,9 +269,15 @@ In Domain-Driven Design, the Infrastructure layer is the absolute edge of your a
    </details>
 
 ### Phase 6: Application Layer (The Orchestrator)
+
+<details>
+<summary><b>📚 Theory: SOLID Dependency Inversion (Learn More)</b></summary>
+
 The Application Layer is the "Conductor" of the orchestra. It doesn't know *how* to validate math (the Domain does that), and it doesn't know *how* to make HTTP requests (the Infrastructure does that). It simply orchestrates the flow and applies high-level business rules (like our $10,000 threshold limit).
 
-*Theory Link (SOLID Principles):* The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
+The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
+
+</details>
 
 1. **Create `src/application/processor.py`:**
    *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Write a `run()` method that loops through the invoices and only approves them if they are under $10,000.*
@@ -278,9 +314,15 @@ The Application Layer is the "Conductor" of the orchestra. It doesn't know *how*
    </details>
 
 ### Phase 7: Integration Testing (No Network Required!)
+
+<details>
+<summary><b>📚 Theory: CUPID Testability & Mocking (Learn More)</b></summary>
+
 Testing automation bots is notoriously difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved ultimate **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
 
-*Theory Link:* Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
+Because our `InvoiceProcessor` in Phase 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
+
+</details>
 
 1. **Create `tests/integration/test_processor.py`:**
    *Challenge: Write a `MockAPIClient` class that returns fake memory invoices instead of hitting the network. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
@@ -324,7 +366,13 @@ Testing automation bots is notoriously difficult because they usually require lo
    *(Note: If Pytest throws a yellow warning about "unknown markers", try creating a `pytest.ini` file in the root directory to officially register them!)*
 
 ### Phase 8: The Entry Point (Running the Bot)
+
+<details>
+<summary><b>📚 Theory: Dependency Injection (Learn More)</b></summary>
+
 We have built our architecture, but we need a lightweight trigger to actually start the process. In traditional scripts, everything is jammed into one massive file. In our DDD architecture, the entry point simply wires the layers together using **Dependency Injection** and hits "Go".
+
+</details>
 
 1. **Create `task.py` in the root directory:**
    *Challenge: Create the main execution file. Import the real `FastAPIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
@@ -366,9 +414,15 @@ We have built our architecture, but we need a lightweight trigger to actually st
    ```
 
 ### Phase 9: Observability (Replacing the Legacy log.html)
+
+<details>
+<summary><b>📚 Theory: 12-Factor Telemetry Streams (Learn More)</b></summary>
+
 Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern in the cloud because containers are ephemeral (they get deleted when finished). 
 
 Instead, modern applications output **Structured JSON Logs** to the terminal stream. Log routers (like Datadog, Splunk, or Promtail) capture this stream automatically.
+
+</details>
 
 1. **Add the modern logging library:**
    ```bash
