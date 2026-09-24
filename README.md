@@ -778,6 +778,8 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
            self.approved_invoices = []
    
        def fetch_pending_invoices(self):
+           # We intentionally hardcode a cheap and an expensive invoice here
+           # so we can test that the Orchestrator applies the $10,000 rule correctly!
            return [
                Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
                Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
