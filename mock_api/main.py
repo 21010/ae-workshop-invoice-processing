@@ -1,9 +1,12 @@
 import random
-
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 
-app = FastAPI(title="Mock ERP API")
+app = FastAPI(
+    title="ERP REST API",
+    description="Corporate ERP System. Interactive Swagger documentation available at /docs",
+    version="1.0.0"
+)
 
 class LineItem(BaseModel):
     description: str
@@ -20,30 +23,50 @@ class ApprovalResult(BaseModel):
     status: str
     reason: str = ""
 
+VENDORS = ["TechCorp", "OfficeSupplies", "GlobalLogistics", "CloudServices", "ScamCo", "ConsultingGroup"]
+
+def generate_invoices(count: int = 25):
+    invoices = []
+    for i in range(1, count + 1):
+        vendor = random.choice(VENDORS)
+        
+        # Generate 1 to 4 line items
+        num_items = random.randint(1, 4)
+        line_items = []
+        actual_sum = 0.0
+        
+        for j in range(num_items):
+            # Amount between 100 and 6000
+            amount = round(random.uniform(100.0, 6000.0), 2)
+            line_items.append(LineItem(description=f"Item {j+1}", amount=amount))
+            actual_sum += amount
+            
+        total_amount = round(actual_sum, 2)
+        
+        # 15% chance to corrupt the math (The Data Trap)
+        if random.random() < 0.15:
+            total_amount = round(total_amount + random.uniform(100.0, 5000.0), 2)
+            
+        invoices.append(Invoice(
+            id=f"INV-{str(i).zfill(4)}",
+            vendor=vendor,
+            currency="USD",
+            line_items=line_items,
+            total_amount=total_amount
+        ))
+    return invoices
+
+# Generate a static pool so it stays consistent per server restart
+CACHED_INVOICES = generate_invoices(25)
+
 @app.get("/api/invoices/pending", response_model=list[Invoice])
 def get_pending_invoices():
-    """Return a list of invoices. Includes a 'trap' where total != sum of line items."""
-    return [
-        Invoice(
-            id="INV-001", vendor="TechCorp", currency="USD",
-            line_items=[LineItem(description="Laptops", amount=5000.0)],
-            total_amount=5000.0
-        ),
-        Invoice(
-            id="INV-002", vendor="OfficeSupplies", currency="EUR",
-            line_items=[LineItem(description="Desks", amount=12000.0)],
-            total_amount=12000.0
-        ),
-        Invoice( # The Trap (AI Hallucination math error)
-            id="INV-003", vendor="ScamCo", currency="USD",
-            line_items=[LineItem(description="Services", amount=100.0)],
-            total_amount=1000.0 
-        )
-    ]
+    """Return a list of pending invoices. Includes random data corruption traps."""
+    return CACHED_INVOICES
 
 @app.post("/api/invoices/{invoice_id}/approve", response_model=ApprovalResult)
 def approve_invoice(invoice_id: str):
-    """Approve an invoice. Randomly fails to simulate flaky infrastructure."""
+    """Approve an invoice. Randomly fails (503) to simulate unstable legacy infrastructure."""
     if random.random() < 0.2:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
