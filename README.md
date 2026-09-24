@@ -92,8 +92,9 @@ Before writing code, we must translate the raw business request into an engineer
    ```mermaid
    flowchart TD
        Start((Trigger: task.py)) --> Fetch[Infrastructure: GET /api/invoices]
-       Fetch --> Loop{Application: For each Invoice}
-       Loop --> Validate{Domain: Pydantic Validation}
+       Fetch --> Loop{Application: More Invoices?}
+       Loop -- Yes --> Validate{Domain: Pydantic Validation}
+       Loop -- No --> End((End: Complete))
        Validate -- Math Error --> Reject[Application: Log Error & Skip]
        Validate -- Valid --> CheckAmount{Application: Is Total > $10,000?}
        CheckAmount -- Yes --> Manual[Application: Log Warning & Skip]
