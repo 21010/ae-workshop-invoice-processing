@@ -382,6 +382,21 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 > * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
 > * **Custom Validators:** You can write custom python methods decorated with `@model_validator` to enforce complex business rules (e.g., "Does the sum of all line items equal the total amount?").
 > 
+>   *Example: Defining a strict Domain Model*
+>   ```python
+>   from pydantic import BaseModel
+> 
+>   class Employee(BaseModel):
+>       employee_id: int        # Automatically casts the string "123" to int 123
+>       name: str
+>       is_active: bool = True  # Provides a default value if missing
+>   
+>   # Instantiating the model with raw, untrusted JSON data
+>   raw_data = {"employee_id": "404", "name": "Sarah"}
+>   sarah = Employee(**raw_data) 
+>   print(sarah.employee_id)  # IDE autocomplete works here!
+>   ```
+> 
 > **3. Best Practices**
 > * Never use raw dictionaries for business logic. Always parse external JSON directly into a Pydantic model immediately after downloading it.
 > * Keep your models "pure". A Pydantic model should only validate data; it should never make database queries or API calls itself.
