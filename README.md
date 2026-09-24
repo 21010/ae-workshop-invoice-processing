@@ -4,23 +4,32 @@
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
-## 1. The Business Case & Problem
+## 1. The Business Request (From the Finance Team)
 
-You have been tasked with automating the approval process for incoming vendor invoices.
+*You have just received the following email from Sarah in the Finance Department:*
 
-**The Context:**
-In the past, this process was handled by a legacy RPA bot that scraped a UI. It was brittle and frequently broke when the UI changed. Now, we are migrating to an API-first approach, pulling invoice payloads from an upstream system, and we need to build a robust Python backend to process them reliably.
+> **Subject:** Request for a new Excel Macro / Power Automate script for Invoices
+> 
+> Hi Automation Team,
+> 
+> We are drowning in vendor invoices and we really need a bot to help us. Right now, my team spends hours clicking through the ERP portal to approve these. 
+> 
+> Can you build a Power Automate Desktop script or maybe an Excel macro that logs into the ERP screen, looks at the list of pending invoices, and clicks "Approve" for each one? 
+> 
+> There are two things the bot needs to check before clicking approve:
+> 1. Sometimes the upstream vendor system glitches and the total amount on the invoice doesn't actually match the sum of the individual line items. We need the bot to calculate the math on the screen and make sure it adds up. If it doesn't add up, the bot should skip it so we don't corrupt our ledgers.
+> 2. We are only allowed to auto-approve standard invoices. If an invoice is over $10,000, please don't let the bot click approve. Leave those for us to review manually.
+> 
+> Oh, one last thing: the ERP system is really slow and sometimes the webpage crashes with a "503 Error". If that happens, the bot should just refresh the page and try again.
+> 
+> Thanks!
+> Sarah (Senior Financial Analyst)
 
-**The Core Problems (Data Corruption & Instability):**
+---
 
-1. **Data Corruption:** The upstream system occasionally sends corrupted data payloads. For example, it might send correct line items ($500 and $200) but provide a incorrect total amount ($9000). If we blindly pass this to the ERP system, we corrupt our financial data.
-2. **System Instability:** The target ERP system's REST API is unstable and frequently throws `503 Service Unavailable` errors. Our automation must be resilient enough to handle these network drops automatically without crashing.
+### The Engineering Reality
 
-**The Business Rules:**
-
-1. Fetch pending invoices from the ERP system via its new REST API.
-2. **Deterministic Validation:** Ensure the `Total Amount` matches the sum of the `Line Items`. If it doesn't, reject it immediately.
-3. **Thresholding:** Auto-approve the invoice in the ERP system **UNLESS** the total amount is greater than $10,000. Invoices over $10,000 require manual review.
+Sarah described her problem using a specific, fragile technical solution (a UI-clicking macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
 
 ### As-Is Process (BPMN)
 
