@@ -340,7 +340,18 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
    ```
 
-3. **Verify the Final Structure:**
+3. **Configure Pytest Markers:**
+   We told our `pre-commit` hook to only run tests marked as `unit`. We must register this custom label in our `pyproject.toml` so Pytest understands it. Open `pyproject.toml` and add this block to the bottom:
+   
+   ```toml
+   [tool.pytest.ini_options]
+   markers = [
+       "unit: mark a test as a unit test.",
+       "integration: mark a test as an integration test."
+   ]
+   ```
+
+4. **Verify the Final Structure:**
    By the end of this workshop, your project tree will look exactly like this:
    
    ```text
