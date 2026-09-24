@@ -44,6 +44,7 @@
       ]
     }
   },
-  "postStartCommand": "bash -c 'nohup uvx run uvicorn mock_api.main:app --host 127.0.0.1 --port 8080 > /tmp/mock_api.log 2>&1 &'",
+  "postCreateCommand": "uv venv \"postCreateCommand": "uv sync"\"postCreateCommand": "uv sync" uv pip install fastapi uvicorn pydantic",
+  "postStartCommand": "bash -c 'nohup .venv/bin/uvicorn mock_api.main:app --host 0.0.0.0 --port 8080 > /tmp/mock_api.log 2>&1 &'",
   "forwardPorts": [8080]
 }
