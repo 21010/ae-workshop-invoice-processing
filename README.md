@@ -579,9 +579,9 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    </details>
 
-3. **Prove the Infrastructure Works (`tests/integration/test_api_client.py`):**
-   *What are we doing?* We write an Integration test. However, automated tests must be fast and reliable. We don't want to actually hit the real API and wait for network latency. Instead, we use a technique called **Mocking** to intercept the `requests.get` call and return a fake response.
-   *Challenge: Create an integration test labeled `@pytest.mark.integration`. Use `@patch('src.infrastructure.api_client.requests.get')` to return a mock response containing one fake invoice. Assert that your client correctly parses it into a Pydantic model.*
+3. **Prove the Infrastructure Works (`tests/unit/test_api_client.py`):**
+   *What are we doing?* We write a Unit test for our API adapter. Automated tests must be fast and reliable. We don't want to actually hit the real API and wait for network latency. Instead, we use a technique called **Mocking** to intercept the low-level `requests.get` call and return a fake response.
+   *Challenge: Create a unit test labeled `@pytest.mark.unit`. Use `@patch('src.infrastructure.api_client.requests.get')` to return a mock response containing one fake invoice. Assert that your client correctly parses it into a Pydantic model.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -591,7 +591,7 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    from unittest.mock import patch, Mock
    from src.infrastructure.api_client import FastAPIClient
    
-   @pytest.mark.integration
+   @pytest.mark.unit
    @patch("src.infrastructure.api_client.requests.get")
    def test_fetch_pending_invoices(mock_get):
        # Arrange: Setup the fake API response
@@ -710,18 +710,34 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 ### Step 7: Integration Testing (No Network Required!)
 
 <details>
-<summary><b>📚 Theory: CUPID Testability & Mocking (Learn More)</b></summary>
+<summary><b>📚 Theory: CUPID Principles & Integration Testing (Learn More)</b></summary>
 
-> Testing automation bots is difficult because they usually require logging into live UI systems. Because we engineered a clean DDD architecture with Dependency Inversion, we have achieved **Testability** (CUPID principles). We can test our entire business logic without ever touching the network!
+> **1. The CUPID Properties**
+> While SOLID focuses on class design, **CUPID** focuses on joyful developer experiences. 
+> * **C**omposable: Code that plays well with others (our Orchestrator takes any API Client).
+> * **U**nix Philosophy: Do one thing well.
+> * **P**redictable: Tests should pass 100% of the time. (Networks are unpredictable, which is why we mock them).
+> * **I**diomatic: Writing Pythonic code (like using `Protocol`).
+> * **D**omain-based: Structuring folders by business domain.
 > 
-> Because our `InvoiceProcessor` in Step 6 only requires an object matching the `InvoiceAPIClient(Protocol)`, we can pass it a fake "Mock" client that stores data in memory instead of making real HTTP requests. 
+> **2. The Testing Spectrum**
+> To build a reliable bot, we need all three layers of the testing pyramid:
+> * **Unit Tests (Step 4 & 5):** We tested our Pydantic math in total isolation. We tested our `FastAPIClient` by mocking the `requests` library.
+> * **Integration Tests (This Step):** Here, we test the **wiring** between our Application Orchestrator and our Domain models. Does the Orchestrator correctly apply the $10,000 threshold rule?
+> * **End-to-End (E2E) Tests (Next Step):** Does the entire script actually work when we hit the real ERP system? 
+> 
+> **3. Fakes vs Mocks**
+> In Step 5, we used a `Mock` to dynamically intercept a Python library (`requests`). In this step, we will build a `Fake`—a lightweight, working implementation of our `InvoiceAPIClient` Protocol that just stores data in a Python list instead of sending it over the internet. This is much cleaner and faster for orchestrator testing!
 
 </details>
 
 **🔨 Implementation Steps:**
 
+Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice, and assert that the expensive one is rejected.
+
 1. **Create `tests/integration/test_processor.py`:**
-   *Challenge: Write a `MockAPIClient` class that returns fake memory invoices instead of hitting the network. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
+   *What are we doing?* We write a `MockAPIClient` that implements our Protocol. We inject it into the `InvoiceProcessor`, run the orchestrator, and then check our Fake's internal `approved_invoices` list to prove the business logic worked perfectly.
+   *Challenge: Write a `MockAPIClient` class that returns fake invoices. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
