@@ -52,7 +52,7 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 
 Sarah's manual process is slow, error-prone, and mind-numbing. We are not going to build the fragile screen-scraping macro she asked for. Instead, we are going to build an enterprise-grade, API-driven Python backend that operates invisibly and never breaks when the UI changes.
 
-Your workspace is completely empty (except for this guide and a mock ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
+Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
 
 ### Phase 0: Process Analysis & Architecture Design
 
