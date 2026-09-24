@@ -311,7 +311,14 @@ Now that our environment is built, we need to protect it. We are going to set up
 >   ```
 > 
 > **5. Setting up VS Code for Pytest**
-> To run tests natively inside the VS Code "Testing" sidebar, you must create a `.vscode/settings.json` file telling the editor to use Pytest instead of the default `unittest` framework.
+> To run tests natively inside the VS Code "Testing" sidebar, you can manually create a `.vscode/settings.json` file telling the editor to use Pytest instead of the default `unittest` framework:
+> ```json
+> {
+>     "python.testing.pytestEnabled": true,
+>     "python.testing.unittestEnabled": false,
+>     "python.testing.pytestArgs": ["tests"]
+> }
+> ```
 
 </details>
 
@@ -333,15 +340,7 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
    ```
 
-3. **Configure VS Code Testing (Optional but Recommended):**
-   *Why?* You can always run `uv run pytest` in the terminal, but configuring VS Code allows you to click a green "Play" button next to any test visually in your editor.
-   
-   ```powershell
-   New-Item -ItemType Directory -Force -Path .vscode
-   Set-Content -Path .vscode/settings.json -Value '{"python.testing.pytestEnabled": true, "python.testing.unittestEnabled": false, "python.testing.pytestArgs": ["tests"]}'
-   ```
-
-4. **Verify the Final Structure:**
+3. **Verify the Final Structure:**
    By the end of this workshop, your project tree will look exactly like this:
    
    ```text
@@ -354,8 +353,6 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    ┃ ┣ 📜 conftest.py     # Shared mock data and fixtures for Pytest
    ┃ ┣ 📂 unit/           # Fast tests for business logic (no network required)
    ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
-   ┣ 📂 .vscode/
-   ┃ ┗ 📜 settings.json   # VS Code UI test integration
    ┣ 📜 .pre-commit-config.yaml # Step 2: Security and formatting guardrails
    ┗ 📜 pyproject.toml          # Step 1: Environment and dependency definitions
    ```
