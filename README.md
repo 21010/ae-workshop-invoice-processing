@@ -1,14 +1,15 @@
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/21010/ae-workshop-invoice-processing)
-
 # Guided Automation Project: Invoice Processing
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
 ### ⚠️ Step 0: Get Your Own Copy of this Repository!
 Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate!
-1. Scroll to the top of this GitHub page and click the **Fork** button (or "Use this template").
-2. Create the fork in your own personal GitHub account.
-3. Open a **GitHub Codespace** on *your* new repository, not the original one!
+
+[![Fork Repository](https://img.shields.io/badge/1._Click_Here_To_Fork_This_Repository-black?style=for-the-badge&logo=github)](https://github.com/21010/ae-workshop-invoice-processing/fork)
+
+1. Click the **Fork** button above to create a copy in your personal GitHub account.
+2. Navigate to *your* new repository.
+3. Click the green **`<> Code`** button on your repository, switch to the **Codespaces** tab, and click **Create codespace on main**. *(Do not create a Codespace on the original repository!)*
 4. When you finish the masterclass and push your code, GitHub Actions will automatically grade your work and award a certificate directly to your repository!
 
 ## 1. The Business Request (From the Finance Team)
