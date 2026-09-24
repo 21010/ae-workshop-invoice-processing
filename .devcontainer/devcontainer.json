@@ -11,6 +11,7 @@
           ".devcontainer": true,
           ".github": true
         },
+        "task.allowAutomaticTasks": "on",
         "workbench.startupEditor": "readme",
         "files.autoSave": "afterDelay",
         "workbench.colorTheme": "JetBrains New UI Dark Theme",
