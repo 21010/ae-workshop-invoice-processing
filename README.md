@@ -4,6 +4,13 @@
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
+### ⚠️ Step 0: Get Your Own Copy of this Repository!
+Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate!
+1. Scroll to the top of this GitHub page and click the **Fork** button (or "Use this template").
+2. Create the fork in your own personal GitHub account.
+3. Open a **GitHub Codespace** on *your* new repository, not the original one!
+4. When you finish the masterclass and push your code, GitHub Actions will automatically grade your work and award a certificate directly to your repository!
+
 ## 1. The Business Request (From the Finance Team)
 
 *You have just received the following email from Sarah in the Finance Department:*
