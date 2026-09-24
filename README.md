@@ -134,6 +134,26 @@ Based on our Phase 0 design, we must construct the architecture that isolates ou
    New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py
    ```
 
+3. **Verify the Architecture Structure:**
+   By the end of this workshop, your project tree will look exactly like this:
+   ```text
+   📦 project-root
+   ┣ 📂 src/
+   ┃ ┣ 📂 domain/         # Phase 4: Core business logic and pure data validation (Pydantic)
+   ┃ ┃ ┗ 📜 __init__.py
+   ┃ ┣ 📂 infrastructure/ # Phase 5: External API clients and network resilience (Tenacity)
+   ┃ ┃ ┗ 📜 __init__.py
+   ┃ ┗ 📂 application/    # Phase 6: The orchestrator that glues Domain & Infrastructure together
+   ┃   ┗ 📜 __init__.py
+   ┣ 📂 tests/
+   ┃ ┣ 📂 unit/           # Fast tests for pure business logic (no network required)
+   ┃ ┃ ┗ 📜 __init__.py
+   ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
+   ┃   ┗ 📜 __init__.py
+   ┣ 📜 .pre-commit-config.yaml # Phase 2: Security and formatting guardrails
+   ┗ 📜 pyproject.toml          # Phase 1: Environment and dependency definitions
+   ```
+
 ### Phase 4: Building the Domain (Data Validation)
 Data modeling is arguably the most important step in automation. Generic dictionaries allow corrupted data to infiltrate the system. By strictly defining the shape of an Invoice using `pydantic`, any bad payloads from the upstream system will be caught and destroyed immediately at the boundary.
 
