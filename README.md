@@ -623,21 +623,57 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    uv run pytest -m integration
    ```
 
-### Step 6: Application Layer (The Orchestrator)
+### Step 6: The Orchestrator (SOLID Principles in Action)
 
 <details>
-<summary><b>📚 Theory: SOLID Dependency Inversion (Learn More)</b></summary>
+<summary><b>📚 Theory: SOLID Principles & Python Protocols (Learn More)</b></summary>
 
-> The Application Layer is the "Conductor" of the orchestra. It doesn't know *how* to validate math (the Domain does that), and it doesn't know *how* to make HTTP requests (the Infrastructure does that). It simply orchestrates the flow and applies high-level business rules (like our $10,000 threshold limit).
+> **1. The SOLID Principles**
+> SOLID is an acronym for five design principles that make software maintainable. In automation, two are absolutely critical:
 > 
-> The 'D' in SOLID stands for **Dependency Inversion**. If our orchestrator imports the `FastAPIClient` directly, they become tightly coupled. If we ever migrate to SAP or Salesforce, the orchestrator breaks. Instead, we define a `Protocol` (an interface). The orchestrator only knows it needs *something* that can fetch and approve invoices.
+> * **(S) Single Responsibility Principle:** A class should do one thing. 
+>   * *Bad:* A massive "Bot" script that fetches API data, calculates math, and updates an Excel report all in one 500-line file.
+>   * *Good:* Our DDD structure! `models.py` strictly handles math. `api_client.py` strictly handles networking.
+> 
+> * **(D) Dependency Inversion Principle:** High-level logic should not depend on low-level implementation details.
+>   * *Bad (Tightly Coupled):* 
+>     ```python
+>     # If the UK office forces us to use SAP next year, we have to rewrite this entire core class!
+>     from infrastructure.api_client import FastAPIClient 
+>     class Orchestrator:
+>         def __init__(self):
+>             self.client = FastAPIClient() # Hardcoded dependency!
+>     ```
+>   * *Good (Loosely Coupled):* The Orchestrator asks for "something" that can fetch invoices, injected via the `__init__` constructor.
+> 
+> **2. Python Protocols (Duck Typing)**
+> How do we enforce the "Good" example in Python? We use `typing.Protocol`. A Protocol defines an interface without writing any implementation code. It relies on "Duck Typing" (if it walks like a duck and quacks like a duck, it is a duck).
+> 
+> *When to use it:* When you want to decouple your orchestrator from specific technologies (like FastAPI, SAP, or a fake database for testing).
+> 
+>   *Example: Defining a Protocol*
+>   ```python
+>   from typing import Protocol
+> 
+>   class InvoiceFetcher(Protocol):
+>       # We don't care HOW you fetch it, just that you have this method signature.
+>       def fetch(self) -> list: ...
+>   
+>   class Orchestrator:
+>       # We can pass ANY class in here (FastAPIClient, SAPClient), as long as it has a fetch() method!
+>       def __init__(self, fetcher: InvoiceFetcher):
+>           self.fetcher = fetcher
+>   ```
 
 </details>
 
 **🔨 Implementation Steps:**
 
-1. **Create `src/application/processor.py`:**
-   *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than hardcoding the FastAPI client. Write a `run()` method that loops through the invoices and only approves them if they are under $10,000.*
+In Sarah's email, she hinted that if this tool is successful, management might deploy it globally. This means next year, the bot might have to talk to SAP or Oracle instead of this custom ERP. By using Dependency Inversion and a `Protocol`, we can build an orchestrator that will survive that future migration without changing a single line of core business logic!
+
+1. **Create the Application Orchestrator (`src/application/processor.py`):**
+   *What are we doing?* We define an `InvoiceAPIClient(Protocol)` interface. Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method. Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
+   *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than importing the FastAPI client. Write a `run()` method that loops through the invoices and approves them.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
