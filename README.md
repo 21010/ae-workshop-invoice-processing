@@ -758,25 +758,23 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 
 **🔨 Implementation Steps:**
 
-Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice, and assert that the expensive one is rejected.
+Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice. 
 
-1. **Create `tests/integration/test_processor.py`:**
-   *What are we doing?* We write a `MockAPIClient` that implements our Protocol. We inject it into the `InvoiceProcessor`, run the orchestrator, and then check our Fake's internal `approved_invoices` list to prove the business logic worked perfectly.
-   *Challenge: Write a `MockAPIClient` class that returns fake invoices. Pass it into the `InvoiceProcessor` and assert that an invoice over $10,000 is NOT approved!*
+1. **Create the Fake Client (`tests/conftest.py`):**
+   *What are we doing?* In Step 3, we learned that `conftest.py` is the home for reusable test fixtures. We are building a `FakeAPIClient` that implements our Protocol, but returns memory invoices instead of hitting the network. By making it a `@pytest.fixture`, any test in our project can instantly request it!
+   *Challenge: Open `tests/conftest.py`. Write a `FakeAPIClient` class with a `fetch_pending_invoices` method returning two fake invoices (one under $10,000, one over). Create a fixture function that returns an instance of it.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
    
    ```python
    import pytest
-   from src.application.processor import InvoiceProcessor
    from src.domain.models import Invoice, LineItem
    
-   # A fake API client for testing!
-   class MockAPIClient:
+   class FakeAPIClient:
        def __init__(self):
            self.approved_invoices = []
-   
+           
        def fetch_pending_invoices(self):
            # We intentionally hardcode a cheap and an expensive invoice here
            # so we can test that the Orchestrator applies the $10,000 rule correctly!
@@ -784,27 +782,49 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
                Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
                Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
            ]
-   
+           
        def approve_invoice(self, invoice_id: str):
            self.approved_invoices.append(invoice_id)
            return True
-   
-   @pytest.mark.integration
-   def test_processor_approves_under_threshold_only():
-       client = MockAPIClient()
-       processor = InvoiceProcessor(client)
-       processor.run()
-   
-       # It should approve CHEAP-1, but block EXPENSIVE-1
-       assert "CHEAP-1" in client.approved_invoices
-       assert "EXPENSIVE-1" not in client.approved_invoices
+           
+   @pytest.fixture
+   def fake_api():
+       return FakeAPIClient()
    ```
    
    </details>
 
-2. **Run the integration test:** 
-   Execute `uv run pytest -m integration` in your terminal. 
-   *(Note: If Pytest throws a yellow warning about "unknown markers", try creating a `pytest.ini` file in the root directory to officially register them!)*
+2. **Write the Integration Test (`tests/integration/test_processor.py`):**
+   *What are we doing?* Notice how we just ask Pytest for the `fake_api` fixture in the function arguments! We inject it into the Orchestrator, run it, and check the fake's internal list to prove it only approved the cheap invoice.
+   *Challenge: Create an integration test. Inject the `fake_api` fixture. Run the `InvoiceProcessor` and assert that "CHEAP-1" is approved and "EXPENSIVE-1" is not!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import pytest
+   from src.application.processor import InvoiceProcessor
+   
+   @pytest.mark.integration
+   def test_processor_approves_under_threshold_only(fake_api):
+       # Arrange: Inject the Fake infrastructure!
+       processor = InvoiceProcessor(api_client=fake_api)
+       
+       # Act
+       processor.run()
+       
+       # Assert
+       assert "CHEAP-1" in fake_api.approved_invoices
+       assert "EXPENSIVE-1" not in fake_api.approved_invoices
+   ```
+   
+   </details>
+
+3. **Run the Integration Test:** 
+   Execute the test to verify your Orchestrator logic works perfectly.
+   ```bash
+   uv run pytest -m integration
+   ```
 
 ### Step 8: The Entry Point (Running the Bot)
 
