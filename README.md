@@ -323,4 +323,46 @@ Testing automation bots is notoriously difficult because they usually require lo
    Execute `uv run pytest -m integration` in your terminal. 
    *(Note: If Pytest throws a yellow warning about "unknown markers", try creating a `pytest.ini` file in the root directory to officially register them!)*
 
+### Phase 8: The Entry Point (Running the Bot)
+We have built our architecture, but we need a lightweight trigger to actually start the process. In traditional scripts, everything is jammed into one massive file. In our DDD architecture, the entry point simply wires the layers together using **Dependency Injection** and hits "Go".
+
+1. **Create `task.py` in the root directory:**
+   *Challenge: Create the main execution file. Import the real `FastAPIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import logging
+   from src.infrastructure.api_client import FastAPIClient
+   from src.application.processor import InvoiceProcessor
+
+   # Configure logging so we can see the output in the terminal
+   logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+   def main():
+       print("🚀 Starting Invoice Processing Bot...")
+       
+       # 1. Initialize the real Infrastructure client
+       api_client = FastAPIClient()
+       
+       # 2. Inject it into the Application orchestrator (Dependency Injection)
+       processor = InvoiceProcessor(api_client)
+       
+       # 3. Execute the business logic
+       processor.run()
+       
+       print("✅ Processing Complete!")
+
+   if __name__ == "__main__":
+       main()
+   ```
+   </details>
+
+2. **Execute your completed bot:** 
+   Run the process using `uv` to ensure it executes securely inside your isolated environment:
+   ```bash
+   uv run task.py
+   ```
+
 🎉 **Congratulations!** You have just engineered a modern, tested, and resilient Python automation!
