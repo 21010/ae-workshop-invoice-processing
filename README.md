@@ -174,21 +174,30 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 <details>
 <summary><b>📚 Theory: Shift-Left Security (Learn More)</b></summary>
 
-> We want to automatically format our code and catch security issues before they are ever committed to Git. This guarantees that bad or vulnerable code never enters the repository.
+> **The Problem with Legacy Scripts**
+> In legacy RPA teams, code is often copy-pasted, poorly formatted, and deployed without security reviews. If a developer accidentally hardcodes Sarah's ERP password into the script and uploads it to GitHub, the company could be compromised.
+> 
+> **Shift-Left Security**
+> Modern engineering uses "Shift-Left Security". This means we catch errors and security flaws *before* they are ever committed to Git. By using a tool called `pre-commit`, we can force the computer to automatically run code formatters and security scanners every time we type `git commit`. If the code fails the scan, the commit is blocked!
 
 </details>
 
 **🔨 Implementation Steps:**
 
-1. **Initialize Git and enforce the 'main' branch standard:**
+Now that our environment is built, we need to protect it. We are going to set up automated guardrails so that nobody on your team can ever commit sloppy or insecure code.
+
+1. **Initialize Git and enforce the modern branch standard:**
+   First, we must turn this empty folder into a Git repository. We also rename the default branch from the legacy `master` to the modern industry standard `main`.
    
    ```bash
    git init
    git branch -M main
    ```
 
-2. **Setup pre-commit using our local tools:**
-   Create a file named `.pre-commit-config.yaml` in the root directory. *Notice how we configure the hooks to execute locally via `uv run` to guarantee they use our exact environment versions.*
+2. **Set up the automated security gates:**
+   Create a file named `.pre-commit-config.yaml` in the root directory. 
+   
+   *Connecting the tools:* Remember those `--dev` tools we installed in Step 1? We are now configuring Git to use them! Notice how we force Git to execute them locally via `uv run`. This guarantees that tools like `ruff` (for formatting) and `bandit` (for scanning Python vulnerabilities) run securely inside our isolated environment. We also add `trufflehog` to scan for accidentally hardcoded API keys or passwords.
    
    <details>
    <summary><b>💡 Click here to copy the pre-commit configuration</b></summary>
@@ -226,7 +235,12 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
    
    </details>
 
-3. **Install the hooks:** `uv run pre-commit install`
+3. **Install the hooks into Git:** 
+   Finally, we must tell Git to actually read the file we just created. Run the command below. From this moment on, your code will be automatically scanned every single time you try to commit!
+   
+   ```bash
+   uv run pre-commit install
+   ```
 
 ### Step 3: Project Structure (DDD)
 
