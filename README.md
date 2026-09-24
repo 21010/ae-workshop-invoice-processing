@@ -149,24 +149,25 @@ Before writing code, we must translate Sarah's request into a strict DDD enginee
 With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file or relied on proprietary RPA wrappers like `rcc` (Robocorp). Today, you are going to initialize a strict, reproducible, and open-source environment using `uv`. We will explicitly define our production dependencies (what the bot needs to run) and our development dependencies (what we need to build it securely).
 
 1. **Initialize the project in the terminal:**
+   This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
    
    ```bash
    uv init
    ```
 2. **Add production dependencies:**
-   *Why these?* We need `pydantic` because it is the modern industry standard for validating JSON data structures. We need `requests` to talk to the HTTP API, and `tenacity` to handle retry loops when the API crashes.
+   *Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
    
    ```bash
    uv add pydantic requests tenacity
    ```
 3. **Add development dependencies:**
-   *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot, but they don't need to be packaged into the final production server. Keeping them separate makes our bot faster and more secure.
+   *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
    
    ```bash
    uv add --dev pytest ruff bandit pyrefly pre-commit
    ```
 4. **Analyze the Configuration:**
-   Open the newly generated `pyproject.toml` file. Notice how `uv` automatically tracked your dependencies. This file is the single source of truth for your bot's environment!
+   Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
 
 ### Step 2: Code Quality & Pre-commit
 
