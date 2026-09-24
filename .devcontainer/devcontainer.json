@@ -20,8 +20,7 @@
           "tests",
           "-s"
         ],
-        "marimo.pythonPath": "${workspaceFolder}/.venv/bin/python",
-        
+        "marimo.pythonPath": "${workspaceFolder}/.venv/bin/python"
       },
       "extensions": [
         "ms-python.python",
@@ -31,20 +30,18 @@
         "astral-sh.ty",
         "meta.pyrefly",
         "ms-vsliveshare.vsliveshare",
-        "redhat.vscode-extension-red-hat-business-automation-bundle",
         "adpyke.codesnap",
         "usernamehw.errorlens",
         "tamasfe.even-better-toml",
-        "yzhang.markdown-all-in-one",
         "redhat.vscode-yaml",
-        "redhat.vscode-xml",
         "Qvist.jetbrains-new-ui-dark-theme",
-        "vscode-icons-team.vscode-icons",
-        "marimo-team.vscode-marimo"
+        "vscode-icons-team.vscode-icons"
       ]
     }
   },
-  "postCreateCommand": "uv venv \"postCreateCommand": "uv sync"\"postCreateCommand": "uv sync" uv pip install fastapi uvicorn pydantic",
-  "postStartCommand": "bash -c 'nohup .venv/bin/uvicorn mock_api.main:app --host 0.0.0.0 --port 8080 > /tmp/mock_api.log 2>&1 &'",
-  "forwardPorts": [8080]
+  "postCreateCommand": "cd mock_api && uv venv && uv pip install fastapi uvicorn pydantic",
+  "postStartCommand": "bash -c 'cd mock_api && nohup .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080 > /tmp/mock_api.log 2>&1 &'",
+  "forwardPorts": [
+    8080
+  ]
 }
