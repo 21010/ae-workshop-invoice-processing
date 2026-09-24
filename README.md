@@ -524,7 +524,10 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 >   data = response.json()
 >   ```
 > 
-> **4. Defeating 503 Errors with `tenacity`**
+> **4. OpenAPI (Swagger)**
+> How do you know what endpoints a REST API has? Modern APIs implement the **OpenAPI Specification** (often referred to as Swagger). This provides an interactive web page (usually hosted at `/docs` or `/swagger`) that acts as a living contract. You can use it to see exactly what URLs are available, what JSON payloads they require, and even test them directly in your browser.
+> 
+> **5. Defeating 503 Errors with `tenacity`**
 > When a 503 error happens, we shouldn't write custom `while` loops with `time.sleep()`. Instead, we use the `tenacity` library to automatically retry with **Exponential Backoff** (waiting 1s, then 2s, then 4s to avoid overwhelming the struggling server).
 > 
 >   *Example: Exponential Backoff*
@@ -543,9 +546,12 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 
 Sarah's primary complaint was that the ERP system randomly throws `503 Service Unavailable` errors during peak hours, causing her legacy macro to crash instantly. We are going to build an API client that uses exponential backoff to patiently wait out the crashes, and automatically casts the raw JSON into the bulletproof Pydantic models we built in Step 4.
 
-1. **Create the API Client (`src/infrastructure/api_client.py`):**
+1. **Analyze the ERP API (Swagger):**
+   *Challenge: The mock ERP system is running locally. Open your browser and navigate to `http://127.0.0.1:8080/docs`. Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them.*
+
+2. **Create the API Client (`src/infrastructure/api_client.py`):**
    *What are we doing?* We are building the `FastAPIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call. We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
-   *Challenge: Create the `FastAPIClient` class. Write a GET method to fetch pending invoices, instantly converting the JSON into your `Invoice` model. Write a POST method to approve an invoice with a 3-attempt retry loop.*
+   *Challenge: Build the client using the endpoints you discovered in the Swagger UI. Automatically cast the JSON response into your Pydantic `Invoice` models!*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -572,6 +578,50 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    ```
    
    </details>
+
+3. **Prove the Infrastructure Works (`tests/integration/test_api_client.py`):**
+   *What are we doing?* We write an Integration test. However, automated tests must be fast and reliable. We don't want to actually hit the real API and wait for network latency. Instead, we use a technique called **Mocking** to intercept the `requests.get` call and return a fake response.
+   *Challenge: Create an integration test labeled `@pytest.mark.integration`. Use `@patch('src.infrastructure.api_client.requests.get')` to return a mock response containing one fake invoice. Assert that your client correctly parses it into a Pydantic model.*
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import pytest
+   from unittest.mock import patch, Mock
+   from src.infrastructure.api_client import FastAPIClient
+   
+   @pytest.mark.integration
+   @patch("src.infrastructure.api_client.requests.get")
+   def test_fetch_pending_invoices(mock_get):
+       # Arrange: Setup the fake API response
+       mock_response = Mock()
+       mock_response.json.return_value = [{
+           "id": "INV-MOCK",
+           "vendor": "TestVendor",
+           "currency": "USD",
+           "line_items": [{"description": "Service", "amount": 100}],
+           "total_amount": 100
+       }]
+       mock_get.return_value = mock_response
+       
+       # Act
+       client = FastAPIClient()
+       invoices = client.fetch_pending_invoices()
+       
+       # Assert
+       assert len(invoices) == 1
+       assert invoices[0].id == "INV-MOCK"
+       assert invoices[0].vendor == "TestVendor"
+   ```
+   
+   </details>
+
+4. **Run the Integration Test:** 
+   Execute the test to verify your mocking logic works perfectly.
+   ```bash
+   uv run pytest -m integration
+   ```
 
 ### Step 6: Application Layer (The Orchestrator)
 
