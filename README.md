@@ -146,6 +146,8 @@ Before writing code, we must translate Sarah's request into a strict DDD enginee
 
 **🔨 Implementation Steps:**
 
+With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file and hoped it worked on the production server. Today, you are going to initialize a strict, reproducible environment using `uv`. We will explicitly define our production dependencies (what the bot needs to run) and our development dependencies (what we need to build it securely).
+
 1. **Initialize the project in the terminal:**
    
    ```bash
