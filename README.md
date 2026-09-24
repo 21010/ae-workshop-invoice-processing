@@ -226,6 +226,12 @@ Now that our environment is built, we need to protect it. We are going to set up
            entry: uv run pyrefly check
            language: system
            types: [python]
+         - id: pytest-unit
+           name: pytest unit
+           entry: uv run pytest -m unit
+           language: system
+           pass_filenames: false
+           always_run: true
          - id: uv-audit
            name: uv audit
            entry: uv audit
