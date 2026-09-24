@@ -829,15 +829,25 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
 ### Step 8: The Entry Point (Running the Bot)
 
 <details>
-<summary><b>📚 Theory: Dependency Injection (Learn More)</b></summary>
+<summary><b>📚 Theory: Lightweight Entry Points & Integration (Learn More)</b></summary>
 
-> We have built our architecture, but we need a lightweight trigger to actually start the process. In traditional scripts, everything is jammed into one massive file. In our DDD architecture, the entry point simply wires the layers together using **Dependency Injection** and hits "Go".
+> **1. The Purpose of a Lightweight Entry Point**
+> In legacy scripts, everything—network calls, business logic, math, and configuration—is jammed into one massive `main.py` file. In our DDD architecture, `task.py` is incredibly "dumb" and lightweight. Its only job is to wire the separated layers together using **Dependency Injection** and hit "Go".
+> 
+> **2. Seamless Integration (CI/CD, PAD, and Terminal)**
+> Because our `task.py` is lightweight and our environment is perfectly managed by `uv`, we can execute this bot from absolutely anywhere:
+> * **Terminal:** A developer can manually run it via `uv run task.py`.
+> * **CI/CD Pipelines:** GitHub Actions or Jenkins can run it on a scheduled cron job simply by executing that same command.
+> * **Legacy Orchestrators (Power Automate Desktop - PAD):** If Sarah's department uses Power Automate Desktop, you don't need to rebuild the Python logic visually in PAD. You can simply use the PAD "Run DOS command" action to execute `uv run task.py` and let this robust DDD architecture do the heavy lifting!
 
 </details>
 
 **🔨 Implementation Steps:**
 
+The architecture is complete, and we are finally ready to process Sarah's real invoices against the live (mock) ERP system! 
+
 1. **Create `task.py` in the root directory:**
+   *What are we doing?* We are creating the execution script. We import our real infrastructure (`FastAPIClient`), inject it into our Orchestrator (`InvoiceProcessor`), and run the process. Notice how clean and readable this file is!
    *Challenge: Create the main execution file. Import the real `FastAPIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
    
    <details>
@@ -848,31 +858,32 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
    from src.infrastructure.api_client import FastAPIClient
    from src.application.processor import InvoiceProcessor
    
-   # Configure logging so we can see the output in the terminal
+   # Configure basic logging so we can see the output in the terminal
    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
    
    def main():
        print("Starting Invoice Processing Bot...")
    
-       # 1. Initialize the real Infrastructure client
+       # 1. Initialize the real Infrastructure client (Connecting to the outside world!)
        api_client = FastAPIClient()
    
-       # 2. Inject it into the Application orchestrator (Dependency Injection)
-       processor = InvoiceProcessor(api_client)
+       # 2. Inject the real client into the Application Orchestrator (Dependency Injection)
+       processor = InvoiceProcessor(api_client=api_client)
    
-       # 3. Execute the business logic
+       # 3. Execute the core business logic flow
        processor.run()
    
        print("Processing Complete!")
    
+   # Standard Python idiom to ensure this only runs when executed directly
    if __name__ == "__main__":
        main()
    ```
    
    </details>
 
-2. **Execute your completed bot:** 
-   Run the process using `uv` to ensure it executes inside your isolated environment:
+2. **Execute your completed bot (End-to-End Test):** 
+   Run the process using `uv` to ensure it executes securely inside your isolated virtual environment. This proves the entire system works from end to end!
    
    ```bash
    uv run task.py
