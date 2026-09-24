@@ -617,10 +617,10 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    </details>
 
-4. **Run the Integration Test:** 
+4. **Run the Unit Test:** 
    Execute the test to verify your mocking logic works perfectly.
    ```bash
-   uv run pytest -m integration
+   uv run pytest -m unit
    ```
 
 ### Step 6: The Orchestrator (SOLID Principles in Action)
