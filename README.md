@@ -203,19 +203,23 @@ Now that our environment is built, we need to protect it. We are going to set up
    
    ```yaml
    repos:
+     - repo: https://github.com/trufflesecurity/trufflehog
+       rev: v3.73.0
+       hooks:
+         - id: trufflehog
      - repo: local
        hooks:
-         - id: ruff-format
-           name: ruff-format
-           entry: uv run ruff format
-           language: system
-           types: [python]
          - id: ruff
            name: ruff
            entry: uv run ruff check --fix
            language: system
            types: [python]
            require_serial: true
+         - id: ruff-format
+           name: ruff-format
+           entry: uv run ruff format
+           language: system
+           types: [python]
          - id: bandit
            name: bandit
            entry: uv run bandit -c pyproject.toml -r src/
@@ -226,22 +230,18 @@ Now that our environment is built, we need to protect it. We are going to set up
            entry: uv run pyrefly check
            language: system
            types: [python]
-         - id: pytest-unit
-           name: pytest unit
-           entry: uv run pytest -m unit
-           language: system
-           pass_filenames: false
-           always_run: true
          - id: uv-audit
            name: uv audit
            entry: uv audit
            language: system
            pass_filenames: false
            always_run: true
-     - repo: https://github.com/trufflesecurity/trufflehog
-       rev: v3.73.0
-       hooks:
-         - id: trufflehog
+         - id: pytest-unit
+           name: pytest unit
+           entry: uv run pytest -m unit
+           language: system
+           pass_filenames: false
+           always_run: true
    ```
    
    </details>
