@@ -487,21 +487,65 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    uv run pytest -m unit
    ```
 
-### Step 5: Infrastructure (The Unstable External Services)
+### Step 5: Forging the Infrastructure (Bridging the Unstable Outside World)
 
 <details>
-<summary><b>📚 Theory: 12-Factor Backing Services & Resilience (Learn More)</b></summary>
+<summary><b>📚 Theory: 12-Factor Apps, REST, and Network Resilience (Learn More)</b></summary>
 
-> In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the unpredictable outside world (APIs, databases, file systems). 
+> **1. The 12-Factor App: Backing Services & Config**
+> In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the chaotic outside world. The **12-Factor App** methodology states:
+> * **Backing Services:** Treat databases and APIs as attached resources. If the ERP system goes down, your app should gracefully wait or retry, not crash.
+> * **Config:** Credentials (like API keys) must be injected via Environment Variables, never hardcoded in the script.
 > 
-> In Step 0, we identified that the target ERP system is unstable (throws 503 errors). The 12-Factor App methodology states we must treat backing services robustly. Instead of writing custom retry loops, we will use the `tenacity` library to automatically handle network drops using exponential backoff.
+> **2. REST API Basics & HTTP Status Codes**
+> Modern systems communicate via REST (Representational State Transfer) using standard HTTP verbs:
+> * `GET`: Retrieve data (e.g., fetch invoices). Must be **Idempotent** (running it 100 times doesn't change anything).
+> * `POST`: Create data or trigger actions (e.g., approve an invoice). Not inherently idempotent.
+> 
+> You must understand HTTP Status Codes to build resilient bots:
+> * **200 OK / 201 Created:** Success!
+> * **400 Bad Request:** You sent bad data (e.g., malformed JSON).
+> * **401 Unauthorized / 403 Forbidden:** Your API key is invalid or lacks permissions.
+> * **404 Not Found:** The URL is wrong or the record doesn't exist.
+> * **500 Internal Server Error:** The server crashed (a bug on their end).
+> * **503 Service Unavailable:** The server is overloaded (Sarah's exact problem!).
+> 
+> **3. Best Practices for REST in Python**
+> * **Always Set Timeouts:** If the ERP system hangs forever, your bot will hang forever. Always use `requests.get(url, timeout=10)`.
+> * **Raise for Status:** Always call `response.raise_for_status()` to instantly throw an exception if you get a 4XX or 5XX code.
+> 
+>   *Example: A perfect REST request*
+>   ```python
+>   import requests
+>   
+>   headers = {"Authorization": "Bearer YOUR_ENV_VAR_TOKEN"}
+>   response = requests.get("https://api.erp.com/invoices", headers=headers, timeout=10)
+>   response.raise_for_status() # Throws HTTPError if not 200 OK
+>   data = response.json()
+>   ```
+> 
+> **4. Defeating 503 Errors with `tenacity`**
+> When a 503 error happens, we shouldn't write custom `while` loops with `time.sleep()`. Instead, we use the `tenacity` library to automatically retry with **Exponential Backoff** (waiting 1s, then 2s, then 4s to avoid overwhelming the struggling server).
+> 
+>   *Example: Exponential Backoff*
+>   ```python
+>   from tenacity import retry, stop_after_attempt, wait_exponential
+> 
+>   @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+>   def dangerous_network_call():
+>       # If this raises an exception, Tenacity intercepts it and tries again!
+>       pass
+>   ```
 
 </details>
 
 **🔨 Implementation Steps:**
 
-1. **Create `src/infrastructure/api_client.py`:**
-   *Challenge: Create a `FastAPIClient` class. Write a GET method to fetch `http://127.0.0.1:8080/api/invoices/pending`. Notice how it immediately converts the raw JSON into the `Invoice` Pydantic model you built in Step 4! Then, write a POST method to approve an invoice, decorated with `@retry` from `tenacity`.*
+Sarah's primary complaint was that the ERP system randomly throws `503 Service Unavailable` errors during peak hours, causing her legacy macro to crash instantly. We are going to build an API client that uses exponential backoff to patiently wait out the crashes, and automatically casts the raw JSON into the bulletproof Pydantic models we built in Step 4.
+
+1. **Create the API Client (`src/infrastructure/api_client.py`):**
+   *What are we doing?* We are building the `FastAPIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call. We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
+   *Challenge: Create the `FastAPIClient` class. Write a GET method to fetch pending invoices, instantly converting the JSON into your `Invoice` model. Write a POST method to approve an invoice with a 3-attempt retry loop.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -513,13 +557,16 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    
    class FastAPIClient:
        def fetch_pending_invoices(self) -> list[Invoice]:
-           response = requests.get("http://127.0.0.1:8080/api/invoices/pending")
+           # BEST PRACTICE: Always set a timeout!
+           response = requests.get("http://127.0.0.1:8080/api/invoices/pending", timeout=10)
            response.raise_for_status()
+           # BEST PRACTICE: Immediately parse JSON into Pydantic models!
            return [Invoice(**item) for item in response.json()]
    
+       # BEST PRACTICE: Exponential backoff for network resilience!
        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
        def approve_invoice(self, invoice_id: str) -> bool:
-           response = requests.post(f"http://127.0.0.1:8080/api/invoices/{invoice_id}/approve")
+           response = requests.post(f"http://127.0.0.1:8080/api/invoices/{invoice_id}/approve", timeout=10)
            response.raise_for_status()
            return True
    ```
