@@ -7,7 +7,8 @@
     "vscode": {
       "settings": {
         "files.exclude": {
-          "mock_api": true
+          "mock_api": true,
+          ".devcontainer": true
         },
         "workbench.startupEditor": "readme",
         "files.autoSave": "afterDelay",
@@ -43,6 +44,6 @@
       ]
     }
   },
-  "postStartCommand": "uvx --with fastapi --with uvicorn --with pydantic uvicorn mock_api.main:app --host 127.0.0.1 --port 8080 --reload &",
+  "postStartCommand": "nohup uvx --with fastapi --with uvicorn --with pydantic uvicorn mock_api.main:app --host 0.0.0.0 --port 8080 --reload > /tmp/mock_api.log 2>&1 &",
   "forwardPorts": [8080]
 }
