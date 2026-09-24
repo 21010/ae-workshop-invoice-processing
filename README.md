@@ -47,15 +47,32 @@ Your workspace is completely empty (except for this guide and a mock ERP API run
 
 ### Phase 0: Process Analysis & Architecture Design
 
-Before we write a single line of code, we must analyze the process as Engineers.
+<details>
+<summary><b>📚 Theory: Business Analysis & Domain-Driven Design (Learn More)</b></summary>
 
-* **Requirements:** Fetch invoices, validate them, threshold them, and approve them.
-* **Risks:** The API will drop connections (503), and the data will be corrupted.
-* **Mitigation Plan:** We will implement exponential retries at the network layer, and strict deterministic validation at the data boundary.
-* **Architecture (Domain-Driven Design):** We will use the Hexagonal/DDD design pattern. We will not write a large procedural script. Instead, we will split the bot into 3 standard layers:
-  1. **Infrastructure:** Talks to the outside world (APIs).
-  2. **Domain:** Pure business rules and data models (Validation).
-  3. **Application:** The orchestrator that glues them together.
+> **1. Extracting the Real Problem**
+> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to extract the underlying *business problem*. We must ask: What are we trying to achieve? What are the failure conditions? What happens if the upstream data is corrupt?
+> 
+> **2. The DDD Approach (Ubiquitous Language)**
+> In Domain-Driven Design (DDD), the first step is to establish a "Ubiquitous Language" - a shared vocabulary between the developers and the business experts. If the business talks about "Invoices", "Line Items", and "Approval Thresholds", those exact terms must become the core components (models) in our code.
+> 
+> **3. Bounded Contexts & Layering**
+> DDD separates the core business rules from the technical implementation. The business rules for calculating invoice mathematics do not care if the data came from a REST API, an SQL database, or a flat file. By cleanly separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts and changes in the API.
+
+</details>
+
+**🔨 Implementation Steps:**
+
+Before writing code, map the business requirements to the DDD architecture layers:
+
+1. **Extract Requirements:** Fetch invoices, validate them, threshold them, and approve them.
+2. **Identify Risks & Mitigations:** 
+   * *Risk:* The ERP API is unstable (503 errors). *Mitigation:* Implement exponential retries at the network layer.
+   * *Risk:* The upstream data is corrupted. *Mitigation:* Implement strict validation at the boundary before processing.
+3. **Map the Architecture:** Split the solution into three distinct functional layers:
+   * **Infrastructure:** Handles the external world (HTTP clients and retries).
+   * **Domain:** Contains the business rules and data models (Invoice validation).
+   * **Application:** The orchestrator that coordinates the workflow between the Infrastructure and the Domain.
 
 ### Phase 1: Project Initialization
 
