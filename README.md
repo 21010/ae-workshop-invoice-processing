@@ -614,18 +614,27 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    from src.infrastructure.api_client import FastAPIClient
    
    @pytest.mark.unit
+   # @patch intercepts the requests.get function BEFORE it runs.
+   # It prevents the network call and passes a fake "mock_get" object into our test function.
    @patch("src.infrastructure.api_client.requests.get")
    def test_fetch_pending_invoices(mock_get, mock_erp_json):
-       # Arrange: Setup the fake API response using our fixture data!
+       # ARRANGE: Configure our fake network response
+       
+       # 1. Create a fake HTTP response object
        mock_response = Mock()
+       
+       # 2. When our code calls response.json(), return the fake dictionary from conftest.py
        mock_response.json.return_value = mock_erp_json
+       
+       # 3. Tell the intercepted requests.get to return our fake HTTP response
        mock_get.return_value = mock_response
        
-       # Act
+       # ACT: Run the client. 
+       # It thinks it is hitting the real network, but it is actually talking to our Mock!
        client = FastAPIClient()
        invoices = client.fetch_pending_invoices()
        
-       # Assert
+       # ASSERT: Did the client successfully parse the fake JSON into Pydantic models?
        assert len(invoices) == 1
        assert invoices[0].id == "INV-MOCK"
        assert invoices[0].vendor == "TestVendor"
