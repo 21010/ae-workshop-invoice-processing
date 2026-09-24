@@ -891,27 +891,42 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    uv run task.py
    ```
 
-### Step 9: Observability (Replacing the Legacy log.html)
+### Step 9: Observability & Telemetry (Replacing the Legacy log.html)
 
 <details>
-<summary><b>📚 Theory: 12-Factor Telemetry Streams (Learn More)</b></summary>
+<summary><b>📚 Theory: Structured Logs & 12-Factor Telemetry (Learn More)</b></summary>
 
-> Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern in the cloud because containers are ephemeral (they get deleted when finished). 
+> **1. The 12-Factor App on Logs**
+> Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern. Servers and cloud containers are ephemeral; if the machine dies, your logs are permanently deleted. Instead, modern bots output **Event Streams** to the terminal (`stdout`), allowing log routers to securely transport them off-site.
 > 
-> Instead, modern applications output **Structured JSON Logs** to the terminal stream. Log routers (like Datadog, Splunk, or Promtail) capture this stream automatically.
+> **2. Strings vs. Structured JSON**
+> How should you write a log? 
+> * *Bad (Strings):* `logger.info(f"Invoice {inv_id} processed for {amount}")`. To search for this in Azure, you have to write horrible Regex queries.
+> * *Good (Structured JSON):* `logger.info("invoice_processed", invoice_id=inv_id, amount=amount)`. This natively outputs a JSON dictionary. You can easily query: `SELECT * FROM logs WHERE amount > 5000`.
+> 
+> **3. Contextual Binding (Tracing)**
+> In `structlog`, you can `bind()` context to a logger. If you bind the `invoice_id` at the start of a `for` loop, every single log event fired inside that loop will automatically attach that `invoice_id` to its JSON payload. This creates a perfect audit trace for Azure Application Insights, Datadog, Splunk, or Elasticsearch!
+> 
+> **4. Observability Best Practices**
+> * **INFO:** Standard business events (e.g., `invoice_approved`).
+> * **WARNING:** Expected edge cases that require human intervention (e.g., `manual_review_required`).
+> * **ERROR:** Unexpected system crashes (e.g., `erp_database_timeout`).
 
 </details>
 
 **🔨 Implementation Steps:**
 
+Sarah loves the bot, but audit season is approaching. She needs a perfectly queryable audit trail showing exactly *why* every invoice was approved or rejected. The legacy `log.html` won't cut it. We are going to implement enterprise-grade Structured JSON logging.
+
 1. **Add the modern logging library:**
-   
+   *What are we doing?* We are installing `structlog`, the industry standard for structured Python logging.
    ```bash
    uv add structlog
    ```
 
 2. **Update your Orchestrator (`src/application/processor.py`):**
-   *Challenge: Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context in the JSON payload!*
+   *What are we doing?* We replace standard `logging` with `structlog`. Inside the processing loop, we create a bound logger (`log = logger.bind(...)`). Now, every time we log `manual_review_required` or `invoice_approved`, the Invoice ID and Amount are perfectly captured in the JSON payload!
+   *Challenge: Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context!*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -937,11 +952,13 @@ The architecture is complete, and we are finally ready to process Sarah's real i
            logger.info("fetched_invoices", count=len(invoices))
    
            for inv in invoices:
-               # Bind the ID to the logger so it attaches to all subsequent logs!
+               # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
+               # This makes tracking a single invoice through the system effortless in Azure/Datadog.
                log = logger.bind(invoice_id=inv.id)
                log.info("processing_invoice")
    
                if inv.total_amount > self.threshold:
+                   # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
                    log.warning("manual_review_required", amount=inv.total_amount)
                else:
                    self.api_client.approve_invoice(inv.id)
@@ -951,6 +968,7 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    </details>
 
 3. **Update your Entry Point (`task.py`):**
+   *What are we doing?* We tell `structlog` to render all log events as JSON strings, and inject an ISO-8601 timestamp into every payload automatically.
    *Challenge: Configure `structlog` to output as JSON with an ISO timestamp.*
    
    <details>
@@ -973,8 +991,9 @@ The architecture is complete, and we are finally ready to process Sarah's real i
        logger = structlog.get_logger()
        logger.info("bot_starting")
    
+       # Wire everything up and run!
        api_client = FastAPIClient()
-       processor = InvoiceProcessor(api_client)
+       processor = InvoiceProcessor(api_client=api_client)
        processor.run()
    
        logger.info("bot_finished")
@@ -986,7 +1005,10 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    </details>
 
 4. **Run the bot:**
-   Execute `uv run task.py`. Look at the terminal! You will see machine-readable JSON logs that cloud dashboards can query.
+   Execute the bot. Look at your terminal! You will see machine-readable JSON logs that cloud dashboards (Azure, Datadog, Splunk) can natively parse and query.
+   ```bash
+   uv run task.py
+   ```
 
 ### Step 10: Enterprise Deployment (Azure Architecture)
 
