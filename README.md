@@ -579,9 +579,31 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    </details>
 
-3. **Prove the Infrastructure Works (`tests/unit/test_api_client.py`):**
-   *What are we doing?* We write a Unit test for our API adapter. Automated tests must be fast and reliable. We don't want to actually hit the real API and wait for network latency. Instead, we use a technique called **Mocking** to intercept the low-level `requests.get` call and return a fake response.
-   *Challenge: Create a unit test labeled `@pytest.mark.unit`. Use `@patch('src.infrastructure.api_client.requests.get')` to return a mock response containing one fake invoice. Assert that your client correctly parses it into a Pydantic model.*
+3. **Configure the ERP Mock Data (`tests/conftest.py`):**
+   *What are we doing?* We are creating a reusable Pytest fixture containing the raw JSON dictionary that the ERP system normally returns. Any test can now access this fake data!
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   import pytest
+   
+   @pytest.fixture
+   def mock_erp_json():
+       return [{
+           "id": "INV-MOCK",
+           "vendor": "TestVendor",
+           "currency": "USD",
+           "line_items": [{"description": "Service", "amount": 100}],
+           "total_amount": 100
+       }]
+   ```
+   
+   </details>
+
+4. **Prove the Infrastructure Works (`tests/unit/test_api_client.py`):**
+   *What are we doing?* We write a Unit test. Notice how we inject `mock_erp_json` into the function, and use `@patch` to intercept `requests.get`. We tell the intercepted request to return our fake JSON instead of hitting the network!
+   *Challenge: Create a unit test labeled `@pytest.mark.unit`. Use `@patch` and your `mock_erp_json` fixture to assert that your client correctly parses the fake data into a Pydantic model.*
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -593,16 +615,10 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    @pytest.mark.unit
    @patch("src.infrastructure.api_client.requests.get")
-   def test_fetch_pending_invoices(mock_get):
-       # Arrange: Setup the fake API response
+   def test_fetch_pending_invoices(mock_get, mock_erp_json):
+       # Arrange: Setup the fake API response using our fixture data!
        mock_response = Mock()
-       mock_response.json.return_value = [{
-           "id": "INV-MOCK",
-           "vendor": "TestVendor",
-           "currency": "USD",
-           "line_items": [{"description": "Service", "amount": 100}],
-           "total_amount": 100
-       }]
+       mock_response.json.return_value = mock_erp_json
        mock_get.return_value = mock_response
        
        # Act
@@ -617,7 +633,7 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    </details>
 
-4. **Run the Unit Test:** 
+5. **Run the Unit Test:** 
    Execute the test to verify your mocking logic works perfectly.
    ```bash
    uv run pytest -m unit
