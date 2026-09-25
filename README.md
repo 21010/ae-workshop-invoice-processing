@@ -449,11 +449,9 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    <summary><b>💡 Click here for a hint</b></summary>
    
    > **Hint:** You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
-   
-   </details>
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
    
    ```python
    from pydantic import BaseModel, model_validator
@@ -479,6 +477,61 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    ```
    
    </details>
+
+   </details>
+
+   <details>
+<summary><b>📚 Theory: Defensive Data Modeling & Pydantic (Learn More)</b></summary>
+
+> **1. The Flaw of Generic Dictionaries**
+> In legacy automation, developers often passed raw JSON data around using generic Python dictionaries (e.g., `invoice["total_amount"]`). This is dangerous. If the ERP system unexpectedly changes the API and sends a string `"100.00"` instead of a float `100.00`, your bot will crash deep inside the code during a math operation.
+> 
+> **2. The Pydantic Solution**
+> Pydantic is the industry standard library for data validation. Instead of dictionaries, we define our Domain entities as strict Python classes using `BaseModel`. 
+> * **Automatic Type Casting:** If Pydantic expects a `float` but receives the string `"100.00"`, it will automatically convert it to a float. If it receives something uncastable (like `"UNKNOWN"`), it instantly throws a loud validation error *at the boundary* of the application, rather than failing silently later.
+> * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
+> * **Custom Validators:** You can write custom Python methods decorated with `@model_validator` to enforce complex business rules. There are two critical modes:
+>   * `mode="before"`: Runs *before* Pydantic does its automatic type casting. The data you receive is a raw dictionary. Use this if you need to mutate or clean up the raw payload before parsing (e.g., stripping whitespace).
+>   * `mode="after"`: Runs *after* Pydantic has validated all types. The data you receive is a fully instantiated Python object. **This is best for business logic.**
+> * **Field Constraints & Aliases:** Using the `Field()` function, you can enforce strict mathematical constraints directly on attributes without writing custom methods (e.g., `Field(ge=0)` ensures a number is greater than or equal to zero). You can also use `alias` to map messy external API keys (like `empId`) to clean internal Python variables (like `employee_id`).
+> 
+>   *Example: Defining a strict Domain Model with Fields and Validators*
+>   ```python
+>   from pydantic import BaseModel, model_validator, Field
+> 
+>   class Employee(BaseModel):
+>       # Use alias for bad external keys, and gt=0 to enforce positive numbers
+>       employee_id: int = Field(alias="empId", gt=0)
+>       name: str
+>       # Constraints: age must be between 18 and 65
+>       age: int = Field(ge=18, le=65)
+>       is_active: bool = Field(default=True)
+>
+>       @model_validator(mode="before")
+>       @classmethod
+>       def clean_raw_data(cls, data: dict):
+>           # Runs first! We clean the raw dictionary before Pydantic sees it.
+>           if "name" in data and isinstance(data["name"], str):
+>               data["name"] = data["name"].strip().title()
+>           return data
+>   
+>   # Instantiating the model with raw, messy external JSON data
+>   raw_data = {"empId": "404", "name": "   sarah   ", "age": "25"}
+>   sarah = Employee(**raw_data) 
+>   
+>   # The object is now perfectly clean and safe to use!
+>   # sarah.employee_id -> 404 (int)
+>   # sarah.name -> "Sarah" (str)
+>   ```
+> 
+> **3. Best Practices**
+> * Never use raw dictionaries for business logic. Always parse external JSON directly into a Pydantic model immediately after downloading it.
+> * Keep your models "pure". A Pydantic model should only validate data; it should never make database queries or API calls itself.
+> 
+> **4. Preparation for AI Agents**
+> Strict data modeling is the absolute prerequisite for building **AI Agents** or LLM harnesses. Large Language Models often hallucinate or generate slightly malformed JSON. By forcing the LLM's output through a strict Pydantic model, you guarantee that your underlying Python code never receives corrupted AI output. In fact, modern AI frameworks (like LangChain or OpenAI's SDK) rely on Pydantic natively to force the LLM to adhere to specific schemas!
+
+</details>
 
 2. **Prove the Defense Works (`tests/unit/test_domain.py`):**
    *What are we doing?* We are practicing Test-Driven Development (TDD). Before we connect to the real API, we write a lightning-fast unit test simulating a corrupted invoice to definitively prove that our Pydantic model will reject it.
@@ -596,11 +649,38 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    <summary><b>💡 Click here for a hint</b></summary>
    
    > **Hint:** Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL). Remember that because of our strict Pydantic model, initializing `Invoice(**item)` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
+
+   <details>
+   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
+   
+   ```python
+   import requests
+   from tenacity import retry, stop_after_attempt, wait_exponential
+   from src.domain.models import Invoice
+   
+   class FastAPIClient:
+       def fetch_pending_invoices(self) -> list[Invoice]:
+           # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
+           # TODO: Set a timeout (e.g., 10 seconds)
+           # TODO: Raise for status
+           # TODO: Loop through the JSON response and parse each item into an Invoice model
+           # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
+           pass
+   
+       # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
+       def approve_invoice(self, invoice_id: str) -> bool:
+           # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
+           # TODO: Set a timeout
+           # TODO: Raise for status
+           pass
+   ```
    
    </details>
-   
+
+   </details>
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
    
    ```python
    import requests
@@ -751,11 +831,9 @@ In Sarah's email, she hinted that if this tool is successful, management might d
    <summary><b>💡 Click here for a hint</b></summary>
    
    > **Hint:** Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it. Use an `if` statement to check if `total_amount > self.threshold`. Most importantly, remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
-   
-   </details>
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
    
    ```python
    import logging
@@ -781,6 +859,47 @@ In Sarah's email, she hinted that if this tool is successful, management might d
            # TODO: Otherwise, try to approve the invoice
            # TODO: Wrap the approval in a try/except block so a failure doesn't crash the loop!
            pass
+   ```
+   
+   </details>
+
+   </details>
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+   
+   ```python
+   import structlog
+   from src.domain.models import Invoice
+   from typing import Protocol
+   
+   logger = structlog.get_logger()
+   
+   class InvoiceAPIClient(Protocol):
+       def fetch_pending_invoices(self) -> list[Invoice]: ...
+       def approve_invoice(self, invoice_id: str) -> bool: ...
+   
+   class InvoiceProcessor:
+       def __init__(self, api_client: InvoiceAPIClient):
+           self.api_client = api_client
+           self.threshold = 10000.0
+   
+       def run(self):
+           invoices = self.api_client.fetch_pending_invoices()
+           logger.info("fetched_invoices", count=len(invoices))
+   
+           for inv in invoices:
+               # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
+               # This makes tracking a single invoice through the system effortless in Azure/Datadog.
+               log = logger.bind(invoice_id=inv.id)
+               log.info("processing_invoice")
+   
+               if inv.total_amount > self.threshold:
+                   # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
+                   log.warning("manual_review_required", amount=inv.total_amount)
+               else:
+                   self.api_client.approve_invoice(inv.id)
+                   log.info("invoice_approved")
    ```
    
    </details>
