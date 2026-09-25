@@ -360,7 +360,7 @@ Finally, we must tell Git to actually read the file we just created. Run the com
 uv run pre-commit install
 ```
 
-### [to do: fix the problem ad re-add title to this section]
+### Architecting the Foundation (DDD & Testing)
 
 <details>
 <summary><b>📚 Click here to learn more about: Domain-Driven Isolation & Test Strategies</b></summary>
@@ -639,7 +639,10 @@ class Invoice(BaseModel):
 <summary><b>💡 Click here for hints</b></summary>
 
 > **Hints:**
-[to do: add hints]
+>
+> * Use the `Invoice` class you just created.
+> * Pass in invalid `total_amount` data intentionally.
+> * Wrap the object creation inside a `with pytest.raises(ValueError):` context manager.
 
 <details>
 <summary><b>💡 Click here to show the full solution snippet</b></summary>
@@ -797,27 +800,32 @@ class APIClient:
 <details>
 <summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-[to do: fix this and replace code beloe with the actual full solution snippet]
 ```python
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 from src.domain.models import Invoice
 
-class APIClient:
+class FastAPIClient:
     def fetch_pending_invoices(self) -> list[Invoice]:
-        # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
-        # TODO: Set a timeout (e.g., 10 seconds)
-        # TODO: Raise for status
-        # TODO: Loop through the JSON response and parse each item into an Invoice model
-        # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
-        pass
+        response = requests.get("http://127.0.0.1:8080/api/invoices/pending", timeout=10)
+        response.raise_for_status()
+        
+        valid_invoices = []
+        for item in response.json():
+            try:
+                valid_invoices.append(Invoice(**item))
+            except ValueError as e:
+                # Log or print the error and skip this corrupted invoice
+                print(f"Skipping corrupted invoice: {e}")
+                continue
+                
+        return valid_invoices
 
-    # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def approve_invoice(self, invoice_id: str) -> bool:
-        # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
-        # TODO: Set a timeout
-        # TODO: Raise for status
-        pass
+        response = requests.post(f"http://127.0.0.1:8080/api/invoices/{invoice_id}/approve", timeout=10)
+        response.raise_for_status()
+        return True
 ```
 
 </details>
