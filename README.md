@@ -144,7 +144,7 @@ Instead of opening Chrome and calculating math manually, our API-driven Python b
 
 [to do: verify if the diagram needs refinements; analyze if we should add or replace BPMN diagram with UML diagram]
 
-### 2.2: Project Initialization
+### 2.2. Project Initialization
 
 <details>
 <summary>
@@ -233,7 +233,7 @@ Today, you are going to initialize a strict, reproducible, and open-source envir
 
    Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
 
-### Step 2: Building Automated Security Guardrails
+### 2.3. Building Automated Security Guardrails
 
 <details>
 <summary><b>📚 Click here to learn more about : Shift-Left Security & Tooling</b></summary>
@@ -346,7 +346,7 @@ Now that our environment is built, we need to protect it. We are going to set up
    uv run pre-commit install
    ```
 
-### Step 3 [to do: fix the problem ad re-add step 3 title]
+### 2.4. [to do: fix the problem ad re-add step 3 title]
 
 <details>
 <summary><b>📚 Click here to learn more about: Domain-Driven Isolation & Test Strategies</b></summary>
@@ -472,7 +472,7 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
    ┗ pyproject.toml          # Step 1: Environment and dependency definitions
    ```
 
-### Step 4: Forging the Domain (Defending Against Corrupted Data)
+### 2.5. Forging the Domain (Defending Against Corrupted Data)
 
 <details>
 <summary><b>📚 Click here to learn more about: Defensive Data Modeling & Pydantic</b></summary>
@@ -642,7 +642,7 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    uv run pytest -m unit
    ```
 
-### Step 5: Preparing the Infrastructure (Bridging the Unstable Outside World)
+### 2.6. Preparing the Infrastructure (Bridging the Unstable Outside World)
 
 <details>
 <summary><b>📚 Click here to learn more about: 12-Factor Apps, REST, and Network Resilience</b></summary>
@@ -920,7 +920,7 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    </details>
    </details>
 
-### Step 6: The Orchestrator (SOLID Principles in Action)
+### 2.7. The Orchestrator (SOLID Principles in Action)
 
 <details>
 <summary><b>📚 Click here to learn more about: SOLID Principles & Python Protocols</b></summary>
@@ -1066,7 +1066,7 @@ In Sarah's email, she hinted that if this tool is successful, management might d
    </details>
    </details>
 
-### Step 7: Integration Testing (No Network Required!)
+### 2.8. Integration Testing (No Network Required!)
 
 <details>
 <summary><b>📚 Click here to learn more about: CUPID Principles & Integration Testing</b></summary>
@@ -1190,7 +1190,7 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
    uv run pytest -m integration
    ```
 
-### Step 8: The Entry Point (Running the Bot)
+### 2.9. The Entry Point (Running the Bot)
 
 <details>
 <summary><b>📚 Click here to learn more about: Lightweight Entry Points & Integration</b></summary>
@@ -1275,7 +1275,7 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    uv run task.py
    ```
 
-### Step 9: Observability & Enterprise Deployment
+### 2.10. Observability & Enterprise Deployment
 
 <details>
 <summary><b>📚 Click here to learn more about: Structured Logs & Azure Architecture</b></summary>
