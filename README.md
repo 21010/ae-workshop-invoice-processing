@@ -439,6 +439,13 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 1. **Create the Data Models (`src/domain/models.py`):**
    *What are we doing?* We are creating the strict definitions for `LineItem` and `Invoice`. We are also writing a custom validator to explicitly perform the math check that Sarah requested.
    *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
+
+   <details>
+   <summary><b>💡 Click here for a hint</b></summary>
+   
+   > **Hint:** You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
+   
+   </details>
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -579,6 +586,13 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
 2. **Create the API Client (`src/infrastructure/api_client.py`):**
    *What are we doing?* We are building the `FastAPIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call. We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
    *Challenge: Build the client using the endpoints you discovered in the Swagger UI. Automatically cast the JSON response into your Pydantic `Invoice` models!*
+
+   <details>
+   <summary><b>💡 Click here for a hint</b></summary>
+   
+   > **Hint:** Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL). Remember that because of our strict Pydantic model, initializing `Invoice(**item)` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
+   
+   </details>
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
@@ -727,6 +741,13 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 1. **Create the Application Orchestrator (`src/application/processor.py`):**
    *What are we doing?* We define an `InvoiceAPIClient(Protocol)` interface. Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method. Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
    *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than importing the FastAPI client. Write a `run()` method that loops through the invoices and approves them.*
+
+   <details>
+   <summary><b>💡 Click here for a hint</b></summary>
+   
+   > **Hint:** Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it. Use an `if` statement to check if `total_amount > self.threshold`. Most importantly, remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
+   
+   </details>
    
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
