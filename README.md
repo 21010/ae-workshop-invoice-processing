@@ -483,7 +483,7 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
       <details>
    <summary><b>💡 Click here to show the full solution snippet</b></summary>
    
-   `python
+   ```python
    import math
    from pydantic import BaseModel, model_validator
    
