@@ -172,7 +172,7 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
    *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
    
    ```bash
-   uv add --dev pytest ruff bandit pyrefly pre-commit
+   uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
    ```
 4. **Analyze the Configuration:**
    Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
@@ -195,7 +195,7 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 > 
 > **4. The Industry Standard Toolchain**
 > Our pre-commit pipeline executes in a specific "Fail-Fast" order using the best tools available in the Python ecosystem:
-> * **Gitleaks:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
+> * **Trufflehog:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
 > * **Ruff (`check --fix` and `format`):** Built in Rust, Ruff is 10-100x faster than legacy tools like `flake8` and `black`. It automatically fixes syntax errors, removes unused imports, and enforces strict, uniform code formatting.
 > * **Bandit:** A static application security testing (SAST) tool designed to find common security issues in Python code (e.g., using `eval()` or weak cryptographic hashes).
 > * **Pyrefly:** An advanced static analysis tool that detects "code smells" and suggests modern Python refactoring patterns.
@@ -226,10 +226,13 @@ Now that our environment is built, we need to protect it. We are going to set up
    ```yaml
    fail_fast: true
    repos:
-     - repo: https://github.com/gitleaks/gitleaks
-       rev: v8.18.2
+     - repo: local
        hooks:
-         - id: gitleaks
+         - id: trufflehog
+           name: trufflehog
+           entry: uv run trufflehog --regex --entropy=False --repo_path . .
+           language: system
+           pass_filenames: false
      - repo: local
        hooks:
          - id: ruff
