@@ -172,7 +172,9 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
    *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
    
    ```bash
-   uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
+   uv add --dev pytest ruff bandit pyrefly pre-commit
+
+   *Note: We also need the **TruffleHog V3** binary installed on your system for secret scanning. Follow the [official installation instructions here](https://github.com/trufflesecurity/trufflehog#installation) (e.g. rew install trufflehog or downloading the binary).* 
    ```
 4. **Analyze the Configuration:**
    Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
@@ -229,8 +231,8 @@ Now that our environment is built, we need to protect it. We are going to set up
      - repo: local
        hooks:
          - id: trufflehog
-           name: trufflehog
-           entry: uv run trufflehog --regex --entropy=False --repo_path . .
+           name: TruffleHog V3
+           entry: trufflehog git file://. --only-verified --fail
            language: system
            pass_filenames: false
      - repo: local
