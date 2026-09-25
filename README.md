@@ -2,8 +2,9 @@
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
-### ⚠️ Step 0: Get Your Own Copy of this Repository!
-Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate!
+## ⚠️ Prerequisite: Get Your Own Copy of this Repository
+
+> Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate!
 
 [![Fork Repository](https://img.shields.io/badge/1._Click_Here_To_Fork_This_Repository-black?style=for-the-badge&logo=github)](https://github.com/21010/ae-workshop-invoice-processing/fork)
 
@@ -17,19 +18,20 @@ Before you start writing code, you need your own copy of this project so you can
 *You have just received the following email from Sarah in the Finance Department:*
 
 > **Subject:** Request for a new Excel Macro / Power Automate script for Invoices
-> 
+>
 > Hi Automation Team,
-> 
-> We are drowning in vendor invoices and we really need a bot to help us. Right now, my team spends hours clicking through the ERP portal to approve these. 
-> 
-> Can you build a Power Automate Desktop script or maybe an Excel macro that logs into the ERP screen, looks at the list of pending invoices, and clicks "Approve" for each one? 
-> 
+>
+> We are drowning in vendor invoices and we really need a bot to help us. Right now, my team spends hours clicking through the ERP portal to approve these.
+>
+> Can you build a Power Automate Desktop script or maybe an Excel macro that logs into the ERP screen, looks at the list of pending invoices, and clicks "Approve" for each one?
+>
 > There are two things the bot needs to check before clicking approve:
+>
 > 1. Sometimes the upstream vendor system glitches and the total amount on the invoice doesn't actually match the sum of the individual line items. We need the bot to calculate the math on the screen and make sure it adds up. If it doesn't add up, the bot should skip it so we don't corrupt our ledgers.
 > 2. We are only allowed to auto-approve standard invoices. If an invoice is over $10,000, please don't let the bot click approve. Leave those for us to review manually.
-> 
+>
 > Oh, one last thing: the ERP system is really slow and sometimes the webpage crashes with a "503 Error". If that happens, the bot should just refresh the page and try again.
-> 
+>
 > Thanks!
 > Sarah (Senior Financial Analyst)
 
@@ -37,7 +39,7 @@ Before you start writing code, you need your own copy of this project so you can
 
 ### The Engineering Reality
 
-Sarah described her problem using a specific, fragile technical solution (a UI-clicking macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
+Sarah described her problem using a specific, fragile technical solution (a UI-clicking, a macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
 
 > **Caveat:** API-driven Python is strictly better *when an API exists*. For legacy mainframe green-screens, SAP GUI without BAPI, or vendor portals lacking REST endpoints, traditional RPA (UI automation) remains the correct architectural choice.\n\n### The Manual Process (As-Is)
 *Here is how Sarah's team currently processes invoices manually:*
@@ -62,22 +64,28 @@ Sarah's manual process is slow, error-prone, and mind-numbing. We are not going 
 
 Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
 
-### Step 0: Process Analysis & Architecture Design
+### 2.1 Process Analysis & Architecture Design
 
 <details>
-<summary><b>📚 Theory: Business Analysis & Domain-Driven Design (Learn More)</b></summary>
+
+<summary><b>📚 Click here to learn more about: Business Analysis & Domain-Driven Design</b></summary>
 
 > **1. Understand the Business Domain**
+>
 > Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions?
-> 
+>
 > **2. Establish a Ubiquitous Language**
+>
 > The most critical rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared vocabulary between developers and business experts. If the business talks about "Invoices", "Line Items", and "Approval Thresholds", those exact terms must become the core components (models) in our code.
-> 
+>
 > **3. Define Bounded Contexts & Entities**
-> We must isolate our specific area of responsibility (the Bounded Context). Inside this context, we define our Entities (objects with a distinct identity, like an Invoice) and Value Objects (attributes without an identity, like a Line Item amount). 
-> 
+>
+> We must isolate our specific area of responsibility (the Bounded Context). Inside this context, we define our Entities (objects with a distinct identity, like an Invoice) and Value Objects (attributes without an identity, like a Line Item amount).
+>
 > **4. Hexagonal Architecture (Ports and Adapters)**
-> DDD separates the core business rules from the technical implementation. The mathematical validation of an Invoice does not care if the data came from a REST API or a database. By cleanly separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts.
+>
+> DDD separates the core business rules from the technical implementation. The mathematical validation of an Invoice does not care if the data came from a REST API or a database. By separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts.
+> [to do: explain what Ports and Adapters are]
 
 </details>
 
@@ -86,21 +94,37 @@ Your workspace is completely empty (except for this guide and a ERP API running 
 Before writing code, we must translate Sarah's request into a strict DDD engineering plan:
 
 1. **Understand the Domain & Identify Risks:**
-   * *The Core Workflow:* Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
-   * *Domain Risks:* The upstream system occasionally sends corrupted payloads where the math does not add up. *Mitigation:* We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic.
-   * *Infrastructure Risks:* The target ERP API is known to drop connections and throw 503 errors. *Mitigation:* We will isolate all API calls and wrap them in an exponential backoff retry loop.
 
-2. **Define the Ubiquitous Language & Entities:**
-   Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
+**The Core Workflow**
 
-3. **Map the Architecture Layers:**
-   We will not write a single, procedural script. Instead, we divide the responsibilities:
-   * **The Infrastructure Layer:** This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops.
-   * **The Domain Layer:** This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules. 
-   * **The Application Layer:** This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
+Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
+
+[to do: add as-is BPMN diagram using domain language]
+
+**Risks**
+
+| ID | Type | Risk | Mitigation |
+| :- | :--- | :--- | :--------- |
+| R-01 | Domain Risk | The upstream system occasionally sends corrupted payloads where the math does not add up. | We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic. |
+| R-02 | Infrastructure Risk | The target ERP API is known to drop connections and throw 503 errors. | We will isolate all API calls and wrap them in an exponential backoff retry loop. |
+
+2. **Define the Ubiquitous Language & Entities**
+
+Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
+
+[to do: verify if we should extend this section]
+
+3. **Map the Architecture Layers**
+
+We will not write a single, procedural script. Instead, we divide the responsibilities:
+
+* **The Infrastructure Layer:** This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops.
+* **The Domain Layer:** This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules.
+* **The Application Layer:** This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
 
 4. **Design the Automated Workflow (To-Be)**
-   Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
+
+Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
 
    ```mermaid
    flowchart LR
@@ -118,89 +142,127 @@ Before writing code, we must translate Sarah's request into a strict DDD enginee
        Next --> Loop
    ```
 
-### Step 1: Project Initialization
+[to do: verify if the diagram needs refinements; analyze if we should add or replace BPMN diagram with UML diagram]
+
+### 2.2: Project Initialization
 
 <details>
-<summary><b>📚 Theory: Reproducible Environments & The `uv` Package Manager (Learn More)</b></summary>
+<summary>
+    <b>📚 Click here to learn more about: Reproducible Environments & The `uv` Package Manager</b>
+</summary>
 
 > **1. The Modern Standard (PEP 621)**
 >
 > In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
-> 
+>
 > **2. Introducing `uv`**
-> To manage these modern projects, we use `uv` - an fast package manager built in Rust by Astral. It replaces `pip`, `venv`, `poetry`, and `pip-tools` entirely.
-> 
-> * **Installation:** 
->   * *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
->   * *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
-> * **How it manages virtual environments:** When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
-> * **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_MALWARE_CHECK=1` (Linux) or `$env:UV_MALWARE_CHECK="1"` (Windows).
-> 
+>
+> To manage these modern projects, we use `uv` - a fast package manager built in Rust by Astral. It replaces `pip`, `venv`, `poetry`, and `pip-tools` entirely.
+>
+> **Installation:**
+>
+> * *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+> * *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
+>
+> **How it manages virtual environments?**
+>
+> When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
+>
+> **Security (Audit Feature)**
+>
+> `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_MALWARE_CHECK=1` (Linux) or `$env:UV_MALWARE_CHECK="1"` (Windows).
+>
 > **3. Basic `uv` Commands**
-> 
+>
 > * `uv init` - Initializes a new project and creates the `pyproject.toml`.
 > * `uv add <package>` - Installs a package and adds it to the production dependencies.
 > * `uv add --dev <package>` - Installs a package only for local development/testing.
 > * `uv run <command>` - Automatically executes a command *inside* the isolated virtual environment. You never have to manually run `source .venv/bin/activate` again!
-> 
+>
 > **4. Anatomy of `pyproject.toml`**
+>
 > Here is how a modern, best-practice configuration looks:
-> 
+>
 > * `[project]`: Defines the project metadata (name, version, python version requirement).
 > * `dependencies`: An array of required production libraries (e.g., `requests`, `pydantic`). These are what gets shipped to the server.
 > * `[dependency-groups]`: Defines the `dev` array for local tools (e.g., `pytest`, `ruff`). By cleanly separating dev tools, we ensure our production Docker containers remain small, fast, and secure.
+
+[to do: verify if the theory around pyproject.toml should be extended to include the typical structure, common patterns and best practices]
 
 </details>
 
 **🔨 Implementation Steps:**
 
-With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file or relied on proprietary RPA wrappers like `rcc` (Robocorp). Today, you are going to initialize a strict, reproducible, and open-source environment using `uv`. We will explicitly define our production dependencies (what the bot needs to run) and our development dependencies (what we need to build it securely).
+With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file or relied on proprietary RPA wrappers like `rcc` (Robocorp).
 
-1. **Initialize the project in the terminal:**
-   This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
-   
+Today, you are going to initialize a strict, reproducible, and open-source environment using `uv`. We will explicitly define our production dependencies (what the bot needs to run) and our development dependencies (what we need to build it securely).
+
+1. **Update `uv`**
+
+   [to do: fill in this section; explain why we are doing that]
+
    ```bash
-   uv init --no-package --python 3.12
+   uv self update
    ```
-2. **Add production dependencies:**
-   *Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
-   
-   ```bash
-   uv add pydantic requests tenacity
-   ```
-3. **Add development dependencies:**
-   *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
-   
+
+2. **Initialize the project in the terminal:**
+
+    This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
+
+    ```bash
+    uv init --no-package --python 3.12
+    ```
+
+3. **Add production dependencies:**
+
+    *Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
+
+    ```bash
+    uv add pydantic requests tenacity
+    ```
+
+4. **Add development dependencies:**
+
+    *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
+
    ```bash
    uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
    ```
-4. **Analyze the Configuration:**
+
+5. **Analyze the Configuration:**
+
    Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
 
 ### Step 2: Building Automated Security Guardrails
 
 <details>
-<summary><b>📚 Theory: Shift-Left Security & Tooling (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about : Shift-Left Security & Tooling</b></summary>
 
 > **1. The Problem with Legacy Scripts**
+>
 > In legacy RPA and scripting teams, code is often copy-pasted, poorly formatted, and deployed without security reviews. If a developer accidentally hardcodes Sarah's ERP password into a script and uploads it to GitHub, the entire company could be compromised.
-> 
+>
 > **2. Shift-Left Security & Pre-commit Mechanics**
-> Modern engineering relies on **Shift-Left Security**—catching errors and security flaws as early as possible in the development lifecycle (shifting "left" on the timeline). We enforce this using a framework called `pre-commit`. 
-> 
-> When you type `git commit`, Git pauses and hands control to `pre-commit`. It runs a gauntlet of automated scanners against your code. If any scanner fails, the commit is instantly blocked. This guarantees that vulnerable or sloppy code physically cannot enter your repository.
-> 
+>
+> Modern engineering relies on **Shift-Left Security**, catching errors and security flaws as early as possible in the development lifecycle (shifting "left" on the timeline). We enforce this using a framework called `pre-commit`.
+>
+> When you type `git commit`, Git pauses and hands control to `pre-commit`. It runs a gauntlet of automated scanners against your code. If any scanner fails, the commit is instantly blocked. This guarantees that vulnerable or sloppy code cannot enter your repository.
+>
 > **3. Preparing for CI/CD and AI Engineering**
-> By strictly enforcing these rules locally, you are preparing your codebase for Enterprise CI/CD pipelines (like GitHub Actions or Azure DevOps). Furthermore, clean, standardized, and fully-tested code is an absolute prerequisite for **AI Harness Engineering** (where autonomous AI agents write and refactor code on your behalf). AI models struggle with messy, unformatted spaghetti code, but thrive in strict environments.
-> 
+>
+> By enforcing these rules locally, you are preparing your codebase for Enterprise CI/CD pipelines (like GitHub Actions or Azure DevOps). Furthermore, clean, standardized, and fully-tested code is an absolute prerequisite for **AI Harness Engineering** (where autonomous AI agents write and refactor code on your behalf). AI models struggle with messy, unformatted spaghetti code, but thrive in strict environments.
+>
 > **4. The Industry Standard Toolchain**
+>
 > Our pre-commit pipeline executes in a specific "Fail-Fast" order using the best tools available in the Python ecosystem:
+>
 > * **Trufflehog:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
 > * **Ruff (`check --fix` and `format`):** Built in Rust, Ruff is 10-100x faster than legacy tools like `flake8` and `black`. It automatically fixes syntax errors, removes unused imports, and enforces strict, uniform code formatting.
 > * **Bandit:** A static application security testing (SAST) tool designed to find common security issues in Python code (e.g., using `eval()` or weak cryptographic hashes).
 > * **Pyrefly:** An advanced static analysis tool that detects "code smells" and suggests modern Python refactoring patterns.
 > * **uv audit:** Scans your `uv.lock` file against vulnerability databases to ensure none of your installed dependencies have known security exploits (CVEs).
 > * **Pytest:** The industry standard testing framework. Running unit tests as the final pre-commit hook ensures developers cannot push code that breaks core business logic.
+>
 
 </details>
 
@@ -209,20 +271,22 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 Now that our environment is built, we need to protect it. We are going to set up automated guardrails so that nobody on your team can ever commit sloppy or insecure code.
 
 1. **Enforce the modern 'main' branch standard:**
+
    When you ran `uv init` in Step 1, it automatically initialized a Git repository for you behind the scenes. However, older Git configurations often default to the legacy `master` branch. Let's rename it to the modern industry standard `main`.
-   
+
    ```bash
    git branch -M main
    ```
 
 2. **Set up the automated security gates:**
-   Create a file named `.pre-commit-config.yaml` in the root directory. 
-   
+
+   Create a file named `.pre-commit-config.yaml` in the root directory.
+
    *Connecting the tools:* Remember those `--dev` tools we installed in Step 1? We are now configuring Git to use them! Notice how we force Git to execute them locally via `uv run`. This guarantees that tools like `ruff` (for formatting) and `bandit` (for scanning Python vulnerabilities) run securely inside our isolated environment. We also add `trufflehog` to scan for accidentally hardcoded API keys or passwords.
-   
+
    <details>
    <summary><b>💡 Click here to copy the pre-commit configuration</b></summary>
-   
+
    ```yaml
    fail_fast: true
    repos:
@@ -274,41 +338,51 @@ Now that our environment is built, we need to protect it. We are going to set up
    
    </details>
 
-3. **Install the hooks into Git:** 
+3. **Install the hooks into Git:**
+
    Finally, we must tell Git to actually read the file we just created. Run the command below. From this moment on, your code will be automatically scanned every single time you try to commit!
-   
+
    ```bash
    uv run pre-commit install
    ```
 
-\n> **⚠️ Security Note:** The `.github/workflows/graduate.yml` auto-commits and pushes to `main` without review. This is deliberately simplified for a disposable classroom project and should *never* be used in production repositories without branch protection and required PR reviews.\n\n### Step 3: Architecting the Foundation (DDD & Testing)
+### Step 3 [to do: fix the problem ad re-add step 3 title]
 
 <details>
-<summary><b>📚 Theory: Domain-Driven Isolation & Test Strategies (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: Domain-Driven Isolation & Test Strategies</b></summary>
 
 > **1. Structuring Domain-Driven Design (DDD)**
+>
 > Based on our Step 0 design, we must physically construct the folders that enforce our architecture. We divide our code into:
+>
 > * **Domain (`src/domain`):** Pure Python business rules. It has absolutely zero dependencies on the outside world.
 > * **Infrastructure (`src/infrastructure`):** The "adapter" layer that talks to the chaotic external world (network APIs, databases, UI).
 > * **Application (`src/application`):** The Use-Case orchestrator that fetches data via the Infrastructure and passes it to the Domain.
-> 
+>
 > **2. The Magic of `__init__.py`**
-> In Python, a folder is just a folder until you add an `__init__.py` file. This file tells Python, "Treat this directory as an importable module." Beyond just marking a directory, modern engineers use `__init__.py` to control the public API of their modules. For example, by putting `from .models import Invoice` inside `src/domain/__init__.py`, other files can simply run `from src.domain import Invoice` instead of digging into nested sub-files.
-> 
+>
+> In Python, a folder is just a folder until you add an `__init__.py` file. This file tells Python, "Treat this directory as an importable module."
+>
+> Beyond just marking a directory, modern engineers use `__init__.py` to control the public API of their modules. For example, by putting `from .models import Invoice` inside `src/domain/__init__.py`, other files can simply run `from src.domain import Invoice` instead of digging into nested sub-files.
+>
 > **3. Testing Categories (The Testing Pyramid)**
+>
 > A robust automation project uses multiple layers of tests to ensure stability:
+>
 > * **Unit Tests (`tests/unit`):** Tests a single function or class in total isolation (e.g., verifying invoice math). These run in milliseconds and never touch a network or database.
 > * **Integration Tests (`tests/integration`):** Tests how multiple internal components interact (e.g., the Application orchestrator calling the Infrastructure). This is where we heavily use **Mocking** (faking API responses) so tests remain fast without hitting real servers.
-> * **System / End-to-End (E2E) Tests:** Tests the entire system from start to finish hitting the actual live (or staging) ERP system.
+> * **System / End-to-End (E2E) Tests:** Tests the entire system from start to finish hitting the actual staging ERP system.
 > * **Smoke Tests:** A very fast subset of critical tests run immediately after deployment to ensure the application starts up and didn't "catch fire".
 > * **Regression Tests:** Tests specifically written to reproduce past bugs, ensuring that adding new features never breaks old fixes.
 > * **User Acceptance Tests (UAT):** Tests that validate the software actually solves the business problem (often mapped directly to Sarah's original requirements).
-> 
+>
 > **4. Pytest Best Practices & `conftest.py`**
+>
 > * **Naming Conventions:** Pytest will only discover your tests if the file starts with `test_` (e.g., `test_invoice.py`) and the function starts with `test_` (e.g., `def test_math_validation():`).
 > * **The `conftest.py` File:** If you have data (like a fake test invoice) that you need across multiple test files, you put it in a file named `conftest.py` as a "Fixture". Pytest automatically injects these fixtures into any test function that asks for them by name, keeping your code incredibly DRY (Don't Repeat Yourself).
-> 
+>
 >   *Example `conftest.py`:*
+>
 >   ```python
 >   import pytest
 > 
@@ -316,16 +390,19 @@ Now that our environment is built, we need to protect it. We are going to set up
 >   def fake_invoice():
 >       return {"id": "INV-100", "total": 500}
 >   ```
->   
+>
 >   *Example Test (`test_invoice.py`):*
+>
 >   ```python
 >   def test_invoice_total(fake_invoice):
 >       # Pytest automatically passes the dictionary here!
 >       assert fake_invoice["total"] == 500
 >   ```
-> 
+>
 > **5. Setting up VS Code for Pytest**
+>
 > To run tests natively inside the VS Code "Testing" sidebar, you can manually create a `.vscode/settings.json` file telling the editor to use Pytest instead of the default `unittest` framework:
+>
 > ```json
 > {
 >     "python.testing.pytestEnabled": true,
@@ -333,30 +410,43 @@ Now that our environment is built, we need to protect it. We are going to set up
 >     "python.testing.pytestArgs": ["tests"]
 > }
 > ```
+>
 
 </details>
 
 **🔨 Implementation Steps:**
 
-Now that our environment is locked down by Git and `pre-commit`, it is time to physically build the folders for our Domain-Driven Design and our Testing framework. 
+Now that our environment is locked down by Git and `pre-commit`, it is time to physically build the folders for our Domain-Driven Design and our Testing framework.
 
 1. **Scaffold the Architecture (Windows PowerShell):**
-   *Why these folders?* We are explicitly creating boundaries. The core logic goes in `domain`, the HTTP requests go in `infrastructure`, and the orchestrator goes in `application`. The tests are similarly segregated between `unit` and `integration`.
-   
+
+   *Why these folders?* We are creating boundaries.
+
+   * The core logic goes in `domain`,
+   * The HTTP requests go in `infrastructure`,
+   * The orchestrator goes in `application`.
+   * The tests are similarly segregated between `unit` and `integration`.
+
    ```powershell
    New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
    ```
 
 2. **Initialize them as Python Modules:**
-   Create an empty `__init__.py` file inside each folder so Python can import them. We will also add an empty `conftest.py` file to our tests folder, preparing it for shared testing fixtures later.
-   
+
+   Create an empty `__init__.py` file inside each folder so Python can import them.
+
+   We will also add an empty `conftest.py` file to our tests folder, preparing it for shared testing fixtures later.
+
    ```powershell
    New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
    ```
 
 3. **Configure Pytest Markers:**
-   We told our `pre-commit` hook to only run tests marked as `unit`. We must register this custom label in our `pyproject.toml` so Pytest understands it. Open `pyproject.toml` and add this block to the bottom:
-   
+
+   We told our `pre-commit` hook to only run tests marked as `unit`.
+
+   We must register this custom label in our `pyproject.toml` so Pytest understands it. Open `pyproject.toml` and add this block to the bottom:
+
    ```toml
    [tool.pytest.ini_options]
    markers = [
@@ -367,39 +457,43 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 
 4. **Verify the Final Structure:**
    By the end of this workshop, your project tree will look exactly like this:
-   
+
    ```text
-   📦 project-root
-   ┣ 📂 src/
-   ┃ ┣ 📂 domain/         # Step 4: Core business logic and data validation (Pydantic)
-   ┃ ┣ 📂 infrastructure/ # Step 5: External API clients and network resilience (Tenacity)
-   ┃ ┗ 📂 application/    # Step 6: The orchestrator that glues Domain & Infrastructure together
-   ┣ 📂 tests/
-   ┃ ┣ 📜 conftest.py     # Shared mock data and fixtures for Pytest
-   ┃ ┣ 📂 unit/           # Fast tests for business logic (no network required)
-   ┃ ┗ 📂 integration/    # Complex tests using Mock APIs to prove the orchestrator works
-   ┣ 📜 .pre-commit-config.yaml # Step 2: Security and formatting guardrails
-   ┗ 📜 pyproject.toml          # Step 1: Environment and dependency definitions
+   / project-root
+   ┣ src/
+   ┃ ┣ domain/               # Step 4: Core business logic and data validation (Pydantic)
+   ┃ ┣ infrastructure/       # Step 5: External API clients and network resilience (Tenacity)
+   ┃ ┗ application/          # Step 6: The orchestrator that glues Domain & Infrastructure together
+   ┣ tests/
+   ┃ ┣ conftest.py           # Shared mock data and fixtures for Pytest
+   ┃ ┣ unit/                 # Fast tests for business logic (no network required)
+   ┃ ┗ integration/          # Complex tests using Mock APIs to prove the orchestrator works
+   ┣ .pre-commit-config.yaml # Step 2: Security and formatting guardrails
+   ┗ pyproject.toml          # Step 1: Environment and dependency definitions
    ```
 
 ### Step 4: Forging the Domain (Defending Against Corrupted Data)
 
 <details>
-<summary><b>📚 Theory: Defensive Data Modeling & Pydantic (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: Defensive Data Modeling & Pydantic</b></summary>
 
 > **1. The Flaw of Generic Dictionaries**
+>
 > In legacy automation, developers often passed raw JSON data around using generic Python dictionaries (e.g., `invoice["total_amount"]`). This is dangerous. If the ERP system unexpectedly changes the API and sends a string `"100.00"` instead of a float `100.00`, your bot will crash deep inside the code during a math operation.
-> 
-> **2. The Pydantic Solution**
-> Pydantic is the industry standard library for data validation. Instead of dictionaries, we define our Domain entities as strict Python classes using `BaseModel`. 
+>
+> **2. The Pydantic Way**
+>
+> Pydantic is the industry standard library for data validation. Instead of dictionaries, we define our Domain entities as strict Python classes using `BaseModel`.
+>
 > * **Automatic Type Casting:** If Pydantic expects a `float` but receives the string `"100.00"`, it will automatically convert it to a float. If it receives something uncastable (like `"UNKNOWN"`), it instantly throws a loud validation error *at the boundary* of the application, rather than failing silently later.
 > * **IntelliSense:** Because they are strict classes, your IDE (VS Code) will auto-complete `invoice.total_amount` for you, eliminating spelling typos.
 > * **Custom Validators:** You can write custom Python methods decorated with `@model_validator` to enforce complex business rules. There are two critical modes:
 >   * `mode="before"`: Runs *before* Pydantic does its automatic type casting. The data you receive is a raw dictionary. Use this if you need to mutate or clean up the raw payload before parsing (e.g., stripping whitespace).
 >   * `mode="after"`: Runs *after* Pydantic has validated all types. The data you receive is a fully instantiated Python object. **This is best for business logic.**
-> * **Field Constraints & Aliases:** Using the `Field()` function, you can enforce strict mathematical constraints directly on attributes without writing custom methods (e.g., `Field(ge=0)` ensures a number is greater than or equal to zero). You can also use `alias` to map messy external API keys (like `empId`) to clean internal Python variables (like `employee_id`).
-> 
+> * **Field Constraints & Aliases:** Using the `Field()` function, you can enforce strict constraints directly on attributes without writing custom methods (e.g., `Field(ge=0)` ensures a number is greater than or equal to zero). You can also use `alias` to map messy external API keys (like `empId`) to clean internal Python variables (like `employee_id`).
+>
 >   *Example: Defining a strict Domain Model with Fields and Validators*
+>
 >   ```python
 >   from pydantic import BaseModel, model_validator, Field
 > 
@@ -427,11 +521,12 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 >   # sarah.employee_id -> 404 (int)
 >   # sarah.name -> "Sarah" (str)
 >   ```
-> 
+>
 > **3. Best Practices**
+>
 > * Never use raw dictionaries for business logic. Always parse external JSON directly into a Pydantic model immediately after downloading it.
 > * Keep your models "pure". A Pydantic model should only validate data; it should never make database queries or API calls itself.
-> 
+>
 > **4. Preparation for AI Agents**
 > Strict data modeling is the absolute prerequisite for building **AI Agents** or LLM harnesses. Large Language Models often hallucinate or generate slightly malformed JSON. By forcing the LLM's output through a strict Pydantic model, you guarantee that your underlying Python code never receives corrupted AI output. In fact, modern AI frameworks (like LangChain or OpenAI's SDK) rely on Pydantic natively to force the LLM to adhere to specific schemas!
 
@@ -442,17 +537,25 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 Sarah's business requirement explicitly stated that the ERP math is sometimes corrupted. We cannot trust the incoming data. We are going to build an impenetrable wall in our `domain` layer that strictly validates every single invoice before the orchestrator is even allowed to look at it.
 
 1. **Create the Data Models (`src/domain/models.py`):**
+
    *What are we doing?* We are creating the strict definitions for `LineItem` and `Invoice`. We are also writing a custom validator to explicitly perform the math check that Sarah requested.
-   *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
+
+   *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself!
+
+   Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
 
    <details>
-   <summary><b>💡 Click here for a hint</b></summary>
-   
-   > **Hint:** You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+   >
+   > * You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. 
+   > * You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
+   >
 
    <details>
    <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
-   
+
    ```python
    from pydantic import BaseModel, model_validator
    
@@ -475,14 +578,10 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
            # TODO: If they don't match, raise a ValueError
            return self
    ```
-   
-   </details>
 
-   </details>
-
-      <details>
+   <details>
    <summary><b>💡 Click here to show the full solution snippet</b></summary>
-   
+
    ```python
    import math
    from pydantic import BaseModel, model_validator
@@ -505,17 +604,21 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
            if not math.isclose(calculated_total, self.total_amount, abs_tol=0.01):
                raise ValueError(f"Math Error! Total {self.total_amount} != Sum {calculated_total}")
            return self
-   `
-   
+    ```
+
+   </details>
+   </details>
    </details>
 
 2. **Prove the Defense Works (`tests/unit/test_domain.py`):**
+
    *What are we doing?* We are practicing Test-Driven Development (TDD). Before we connect to the real API, we write a lightning-fast unit test simulating a corrupted invoice to definitively prove that our Pydantic model will reject it.
+
    *Challenge: Write a Pytest function labeled `@pytest.mark.unit`. Create an invoice with bad math and use `with pytest.raises(ValueError):` to prove your validation catches it!*
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import pytest
    from src.domain.models import Invoice, LineItem
@@ -529,44 +632,53 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
                total_amount=9000  # Data Corruption!
            )
    ```
-   
+
    </details>
 
-3. **Run the Defense Test:** 
+3. **Run the Defense Test:**
    Execute the unit test to verify your math validator works perfectly.
 
    ```bash
    uv run pytest -m unit
    ```
 
-### Step 5: Forging the Infrastructure (Bridging the Unstable Outside World)
+### Step 5: Preparing the Infrastructure (Bridging the Unstable Outside World)
 
 <details>
-<summary><b>📚 Theory: 12-Factor Apps, REST, and Network Resilience (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: 12-Factor Apps, REST, and Network Resilience</b></summary>
 
 > **1. The 12-Factor App: Backing Services & Config**
+>
 > In Domain-Driven Design, the Infrastructure layer is the absolute edge of your application. It is the only place allowed to talk to the chaotic outside world. The **12-Factor App** methodology states:
-> * **Backing Services:** Treat databases and APIs as attached resources. If the ERP system goes down, your app should gracefully wait or retry, not crash.
+>
+> * **Backing Services:** Treat databases and APIs as attached resources. If the ERP system goes down, your app should gracefully wait, retry or report, not crash.
 > * **Config:** Credentials (like API keys) must be injected via Environment Variables, never hardcoded in the script.
-> 
+>
 > **2. REST API Basics & HTTP Status Codes**
+>
 > Modern systems communicate via REST (Representational State Transfer) using standard HTTP verbs:
+>
 > * `GET`: Retrieve data (e.g., fetch invoices). Must be **Idempotent** (running it 100 times doesn't change anything).
 > * `POST`: Create data or trigger actions (e.g., approve an invoice). Not inherently idempotent.
-> 
+> [to do: add missing HTTP verbs like PUT]
+>
 > You must understand HTTP Status Codes to build resilient bots:
+>
 > * **200 OK / 201 Created:** Success!
 > * **400 Bad Request:** You sent bad data (e.g., malformed JSON).
 > * **401 Unauthorized / 403 Forbidden:** Your API key is invalid or lacks permissions.
 > * **404 Not Found:** The URL is wrong or the record doesn't exist.
 > * **500 Internal Server Error:** The server crashed (a bug on their end).
 > * **503 Service Unavailable:** The server is overloaded (Sarah's exact problem!).
-> 
+> [to do: verify if we have all common HTTP status codes; what about 3xx?]
+>
 > **3. Best Practices for REST in Python**
+>
 > * **Always Set Timeouts:** If the ERP system hangs forever, your bot will hang forever. Always use `requests.get(url, timeout=10)`.
 > * **Raise for Status:** Always call `response.raise_for_status()` to instantly throw an exception if you get a 4XX or 5XX code.
-> 
+>
 >   *Example: A perfect REST request*
+>
 >   ```python
 >   import requests
 >   
@@ -575,22 +687,27 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 >   response.raise_for_status() # Throws HTTPError if not 200 OK
 >   data = response.json()
 >   ```
-> 
+>
 > **4. OpenAPI (Swagger)**
-> How do you know what endpoints a REST API has? Modern APIs implement the **OpenAPI Specification** (often referred to as Swagger). This provides an interactive web page (usually hosted at `/docs` or `/swagger`) that acts as a living contract. You can use it to see exactly what URLs are available, what JSON payloads they require, and even test them directly in your browser.
-> 
+>
+> How do you know what endpoints a REST API has?
+>
+> Modern APIs implement the **OpenAPI Specification** (often referred to as Swagger). This provides an interactive web page (usually hosted at `/docs` or `/swagger`) that acts as a living contract. You can use it to see exactly what URLs are available, what JSON payloads they require, and even test them directly in your browser.
+>
 > **5. Defeating 503 Errors with `tenacity`**
+>
 > When a 503 error happens, we shouldn't write custom `while` loops with `time.sleep()`. Instead, we use the `tenacity` library to automatically retry with **Exponential Backoff** (waiting 1s, then 2s, then 4s to avoid overwhelming the struggling server).
-> 
->   *Example: Exponential Backoff*
->   ```python
->   from tenacity import retry, stop_after_attempt, wait_exponential
-> 
->   @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
->   def dangerous_network_call():
->       # If this raises an exception, Tenacity intercepts it and tries again!
->       pass
->   ```
+>
+> *Example: Exponential Backoff*
+>
+> ```python
+> from tenacity import retry, stop_after_attempt, wait_exponential
+>
+> @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+> def dangerous_network_call():
+>     # If this raises an exception, Tenacity intercepts it and tries again!
+>     pass
+> ```
 
 </details>
 
@@ -599,26 +716,39 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 Sarah's primary complaint was that the ERP system randomly throws `503 Service Unavailable` errors during peak hours, causing her legacy macro to crash instantly. We are going to build an API client that uses exponential backoff to patiently wait out the crashes, and automatically casts the raw JSON into the bulletproof Pydantic models we built in Step 4.
 
 1. **Analyze the ERP API (Swagger):**
-   *Challenge: The mock ERP system is running locally on port 8080. If you are using GitHub Codespaces, open the "Ports" tab (next to your Terminal), find Port 8080, and click the "Open in Browser" globe icon. Then, add `/docs` to the end of the URL in your browser. Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them!*
+
+   *Challenge: The ERP system is running locally on port `8080`.
+
+   If you are using **GitHub Codespaces**, open the **Ports** tab (next to your Terminal), find Port `8080`, and click the "Open in Browser" globe icon. Then, add `/docs` to the end of the URL in your browser.
+
+   Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them!*
 
 2. **Create the API Client (`src/infrastructure/api_client.py`):**
-   *What are we doing?* We are building the `FastAPIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call. We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
+
+   *What are we doing?*
+
+   * We are building the `APIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call.
+   * We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
+
    *Challenge: Build the client using the endpoints you discovered in the Swagger UI. Automatically cast the JSON response into your Pydantic `Invoice` models!*
 
    <details>
-   <summary><b>💡 Click here for a hint</b></summary>
-   
-   > **Hint:** Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL). Remember that because of our strict Pydantic model, initializing `Invoice(**item)` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+   >
+   > * Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL).
+   > * Remember that because of our strict Pydantic model, initializing `Invoice` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
 
    <details>
    <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
-   
+
    ```python
    import requests
    from tenacity import retry, stop_after_attempt, wait_exponential
    from src.domain.models import Invoice
    
-   class FastAPIClient:
+   class APIClient:
        def fetch_pending_invoices(self) -> list[Invoice]:
            # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
            # TODO: Set a timeout (e.g., 10 seconds)
@@ -634,20 +764,16 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
            # TODO: Raise for status
            pass
    ```
-   
-   </details>
-
-   </details>
 
    <details>
    <summary><b>💡 Click here to show the full solution snippet</b></summary>
-   
+
    ```python
    import requests
    from tenacity import retry, stop_after_attempt, wait_exponential
    from src.domain.models import Invoice
    
-   class FastAPIClient:
+   class APIClient:
        def fetch_pending_invoices(self) -> list[Invoice]:
            # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
            # TODO: Set a timeout (e.g., 10 seconds)
@@ -663,15 +789,26 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
            # TODO: Raise for status
            pass
    ```
-   
+
+   </details>
+   </details>
    </details>
 
 3. **Configure the ERP Mock Data (`tests/conftest.py`):**
-   *What are we doing?* We are creating a reusable Pytest fixture containing the raw JSON dictionary that the ERP system normally returns. Any test can now access this fake data!
-   
+
+   *What are we doing?*
+
+   * We are creating a reusable Pytest fixture containing the raw JSON dictionary that the ERP system normally returns. Any test can now access this fake data!
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hint]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import pytest
    
@@ -685,16 +822,27 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
            "total_amount": 100
        }]
    ```
-   
+
+   </details>
    </details>
 
 4. **Prove the Infrastructure Works (`tests/unit/test_api_client.py`):**
-   *What are we doing?* We write a Unit test. Notice how we inject `mock_erp_json` into the function, and use `@patch` to intercept `requests.get`. We tell the intercepted request to return our fake JSON instead of hitting the network!
+
+   *What are we doing?*
+
+   * We write a Unit test. Notice how we inject `mock_erp_json` into the function, and use `@patch` to intercept `requests.get`. We tell the intercepted request to return our fake JSON instead of hitting the network!
+
    *Challenge: Create a unit test labeled `@pytest.mark.unit`. Use `@patch` and your `mock_erp_json` fixture to assert that your client correctly parses the fake data into a Pydantic model.*
-   
+
+   <details>
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hint]
+
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+
    ```python
    import pytest
    from unittest.mock import patch, Mock
@@ -726,21 +874,33 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
        assert invoices[0].id == "INV-MOCK"
        assert invoices[0].vendor == "TestVendor"
    ```
-   
+
+   </details>
    </details>
 
-5. **Run the Unit Test:** 
+5. **Run the Unit Test:**
+
    Execute the test to verify your mocking logic works perfectly.
+
    ```bash
    uv run pytest -m unit
    ```
 
 6. **Test API Resilience (`tests/unit/test_api_client.py`):**
-   *What are we doing?* We are proving that if the ERP sends a corrupted invoice (e.g. bad math), our `FastAPIClient` catches the `ValueError` from Pydantic and skips it instead of crashing.
-   
+
+   *What are we doing?*
+
+   * We are proving that if the ERP sends a corrupted invoice (e.g. bad math), our `APIClient` catches the `ValueError` from Pydantic and skips it instead of crashing.
+
+   <details>
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hint]
+
    <details>
    <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+
    ```python
    @pytest.mark.unit
    @patch("src.infrastructure.api_client.requests.get")
@@ -756,23 +916,26 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
        invoices = FastAPIClient().fetch_pending_invoices()
        assert [inv.id for inv in invoices] == ["GOOD-1"]
    ```
-   
+
+   </details>
    </details>
 
 ### Step 6: The Orchestrator (SOLID Principles in Action)
 
 <details>
-<summary><b>📚 Theory: SOLID Principles & Python Protocols (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: SOLID Principles & Python Protocols</b></summary>
 
 > **1. The SOLID Principles**
+>
 > SOLID is an acronym for five design principles that make software maintainable. In automation, two are absolutely critical:
-> 
-> * **(S) Single Responsibility Principle:** A class should do one thing. 
+>
+> * **(S) Single Responsibility Principle:** A class should do one thing.
 >   * *Bad:* A massive "Bot" script that fetches API data, calculates math, and updates an Excel report all in one 500-line file.
 >   * *Good:* Our DDD structure! `models.py` strictly handles math. `api_client.py` strictly handles networking.
-> 
+>
 > * **(D) Dependency Inversion Principle:** High-level logic should not depend on low-level implementation details.
->   * *Bad (Tightly Coupled):* 
+>   * *Bad (Tightly Coupled):*
+>
 >     ```python
 >     # If the UK office forces us to use SAP next year, we have to rewrite this entire core class!
 >     from infrastructure.api_client import FastAPIClient 
@@ -780,26 +943,33 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
 >         def __init__(self):
 >             self.client = FastAPIClient() # Hardcoded dependency!
 >     ```
+>
 >   * *Good (Loosely Coupled):* The Orchestrator asks for "something" that can fetch invoices, injected via the `__init__` constructor.
-> 
+>
+> [to do: refine this and cover reamining principles]
+>
 > **2. Python Protocols (Duck Typing)**
-> How do we enforce the "Good" example in Python? We use `typing.Protocol`. A Protocol defines an interface without writing any implementation code. It relies on "Duck Typing" (if it walks like a duck and quacks like a duck, it is a duck).
-> 
+>
+> How do we enforce the "Good" example of (D) Dependency Inversion Principle in Python?
+>
+> We use `typing.Protocol`. A Protocol defines an interface without writing any implementation code. It relies on "Duck Typing" (if it walks like a duck and quacks like a duck, it is a duck).
+>
 > *When to use it:* When you want to decouple your orchestrator from specific technologies (like FastAPI, SAP, or a fake database for testing).
+>
+> *Example: Defining a Protocol*
+>
+> ```python
+> from typing import Protocol
 > 
->   *Example: Defining a Protocol*
->   ```python
->   from typing import Protocol
-> 
->   class InvoiceFetcher(Protocol):
->       # We don't care HOW you fetch it, just that you have this method signature.
->       def fetch(self) -> list: ...
+> class InvoiceFetcher(Protocol):
+>     # We don't care HOW you fetch it, just that you have this method signature.
+>     def fetch(self) -> list: ...
 >   
->   class Orchestrator:
->       # We can pass ANY class in here (FastAPIClient, SAPClient), as long as it has a fetch() method!
->       def __init__(self, fetcher: InvoiceFetcher):
->           self.fetcher = fetcher
->   ```
+> class Orchestrator:
+>     # We can pass ANY class in here (FastAPIClient, SAPClient), as long as it has a fetch() method!
+>     def __init__(self, fetcher: InvoiceFetcher):
+>         self.fetcher = fetcher
+> ```
 
 </details>
 
@@ -808,17 +978,27 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
 In Sarah's email, she hinted that if this tool is successful, management might deploy it globally. This means next year, the bot might have to talk to SAP or Oracle instead of this custom ERP. By using Dependency Inversion and a `Protocol`, we can build an orchestrator that will survive that future migration without changing a single line of core business logic!
 
 1. **Create the Application Orchestrator (`src/application/processor.py`):**
-   *What are we doing?* We define an `InvoiceAPIClient(Protocol)` interface. Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method. Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
+
+   *What are we doing?*
+
+   * We define an `InvoiceAPIClient(Protocol)` interface.
+   * Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method.
+   * Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
+
    *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than importing the FastAPI client. Write a `run()` method that loops through the invoices and approves them.*
 
    <details>
-   <summary><b>💡 Click here for a hint</b></summary>
-   
-   > **Hint:** Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it. Use an `if` statement to check if `total_amount > self.threshold`. Most importantly, remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+   >
+   > * Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it.
+   > * Use an `if` statement to check if `total_amount > self.threshold`.
+   > * Remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
 
    <details>
    <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
-   
+
    ```python
    import logging
    from src.domain.models import Invoice
@@ -844,20 +1024,16 @@ In Sarah's email, she hinted that if this tool is successful, management might d
            # TODO: Wrap the approval in a try/except block so a failure doesn't crash the loop!
            pass
    ```
-   
-   </details>
-
-   </details>
 
    <details>
    <summary><b>💡 Click here to show the full solution snippet</b></summary>
-   
+
    ```python
-   import structlog
+   import logging
    from src.domain.models import Invoice
    from typing import Protocol
    
-   logger = structlog.get_logger()
+   logger = logging.get_logger()
    
    class InvoiceAPIClient(Protocol):
        def fetch_pending_invoices(self) -> list[Invoice]: ...
@@ -885,48 +1061,66 @@ In Sarah's email, she hinted that if this tool is successful, management might d
                    self.api_client.approve_invoice(inv.id)
                    log.info("invoice_approved")
    ```
-   
+
+   </details>
+   </details>
    </details>
 
 ### Step 7: Integration Testing (No Network Required!)
 
 <details>
-<summary><b>📚 Theory: CUPID Principles & Integration Testing (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: CUPID Principles & Integration Testing</b></summary>
 
 > **1. The CUPID Properties**
-> While SOLID focuses on class design, **CUPID** focuses on joyful developer experiences. 
+>
+> While SOLID focuses on class design, **CUPID** focuses on joyful developer experiences.
+>
 > * **C**omposable: Code that plays well with others (our Orchestrator takes any API Client).
 > * **U**nix Philosophy: Do one thing well.
 > * **P**redictable: Tests should pass 100% of the time. (Networks are unpredictable, which is why we mock them).
 > * **I**diomatic: Writing Pythonic code (like using `Protocol`).
 > * **D**omain-based: Structuring folders by business domain.
-> 
+>
 > **2. The Testing Spectrum**
+>
 > To build a reliable bot, we discuss all three layers (though this workshop only builds Unit and Integration tests):
+>
 > * **Unit Tests (Step 4 & 5):** We tested our Pydantic math in total isolation. We tested our `FastAPIClient` by mocking the `requests` library.
 > * **Integration Tests (This Step):** Here, we test the **wiring** between our Application Orchestrator and our Domain models. Does the Orchestrator correctly apply the $10,000 threshold rule?
-> * **End-to-End (E2E) Tests (Next Step):** Does the entire script actually work when we hit the real ERP system? 
-> 
+> * **End-to-End (E2E) Tests (Next Step):** Does the entire script actually work when we hit the real ERP system?
+>
 > **3. Fakes vs Mocks**
+>
 > In Step 5, we used a `Mock` to dynamically intercept a Python library (`requests`). In this step, we will build a `Fake`—a lightweight, working implementation of our `InvoiceAPIClient` Protocol that just stores data in a Python list instead of sending it over the internet. This is much cleaner and faster for orchestrator testing!
 
 </details>
 
 **🔨 Implementation Steps:**
 
-Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice. 
+Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice.
 
 1. **Create the Fake Client (`tests/conftest.py`):**
-   *What are we doing?* In Step 3, we learned that `conftest.py` is the home for reusable test fixtures. We are building a `FakeAPIClient` that implements our Protocol, but returns memory invoices instead of hitting the network. By making it a `@pytest.fixture`, any test in our project can instantly request it!
+
+   *What are we doing?*
+
+   * In Step 3, we learned that `conftest.py` is the home for reusable test fixtures. We are building a `FakeAPIClient` that implements our Protocol, but returns memory invoices instead of hitting the network.
+   * By making it a `@pytest.fixture`, any test in our project can instantly request it!
+
    *Challenge: Open `tests/conftest.py`. Write a `FakeAPIClient` class with a `fetch_pending_invoices` method returning two fake invoices (one under $10,000, one over). Create a fixture function that returns an instance of it.*
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hints]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import pytest
    from src.domain.models import Invoice, LineItem
-   
+
    class FakeAPIClient:
        def __init__(self):
            self.approved_invoices = []
@@ -938,25 +1132,36 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
                Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
                Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
            ]
-           
+
        def approve_invoice(self, invoice_id: str):
            self.approved_invoices.append(invoice_id)
            return True
-           
+
    @pytest.fixture
    def fake_api():
        return FakeAPIClient()
    ```
-   
+
+   </details>
    </details>
 
 2. **Write the Integration Test (`tests/integration/test_processor.py`):**
-   *What are we doing?* Notice how we just ask Pytest for the `fake_api` fixture in the function arguments! We inject it into the Orchestrator, run it, and check the fake's internal list to prove it only approved the cheap invoice.
+
+   *What are we doing?*
+
+   * Notice how we just ask Pytest for the `fake_api` fixture in the function arguments! We inject it into the Orchestrator, run it, and check the fake's internal list to prove it only approved the cheap invoice.
+
    *Challenge: Create an integration test. Inject the `fake_api` fixture. Run the `InvoiceProcessor` and assert that "CHEAP-1" is approved and "EXPENSIVE-1" is not!*
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hints]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import pytest
    from src.application.processor import InvoiceProcessor
@@ -973,11 +1178,14 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
        assert "CHEAP-1" in fake_api.approved_invoices
        assert "EXPENSIVE-1" not in fake_api.approved_invoices
    ```
-   
+
+   </details>
    </details>
 
-3. **Run the Integration Test:** 
+3. **Run the Integration Test:**
+
    Execute the test to verify your Orchestrator logic works perfectly.
+
    ```bash
    uv run pytest -m integration
    ```
@@ -985,35 +1193,53 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
 ### Step 8: The Entry Point (Running the Bot)
 
 <details>
-<summary><b>📚 Theory: Lightweight Entry Points & Integration (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: Lightweight Entry Points & Integration</b></summary>
 
 > **1. The Purpose of a Lightweight Entry Point**
-> In legacy RPA (like Robocorp), everything—network calls, business logic, math, and configuration—is often jammed into one massive `tasks.py` file. In our DDD architecture, `task.py` is incredibly "dumb" and lightweight. Its only job is to wire the separated layers together using **Dependency Injection** and hit "Go".
-> 
+>
+> In legacy RPA (like Robocorp), everything—network calls, business logic, math, and configuration—is often jammed into one massive `tasks.py` file.
+>
+> In our DDD architecture, `task.py` is incredibly "dumb" and lightweight. Its only job is to wire the separated layers together using **Dependency Injection** and hit "Go".
+>
 > **2. Seamless Integration (CI/CD, BPM, and Cloud)**
-> Because our `task.py` is lightweight and our environment is perfectly managed by `uv`, we can execute this bot from absolutely anywhere:
+>
+> Because our `task.py` is lightweight and our environment is managed by `uv`, we can execute this bot from absolutely anywhere:
+>
 > * **Terminal:** A developer can manually run it via `uv run task.py`.
 > * **CI/CD Pipelines:** GitHub Actions, Jenkins, or Azure DevOps Pipelines can run it on a schedule.
 > * **Data & Automation Orchestrators:** You can easily trigger this script from Apache Airflow, Prefect, or enterprise BPM Engines.
 > * **Cloud Native Serverless:** You can wrap this execution command inside an Azure Function or trigger it via an Azure Logic App!
-> * **Legacy Orchestrators (Power Automate Desktop):** If Sarah's department uses PAD, you can use the PAD "Run DOS command" action to execute `uv run task.py` and let this robust Python architecture do the heavy lifting without visual spaghetti!
+> * **Power Automate Desktop:** You can run it from PAD flow using `Run DOS command` action or custom action to execute `uv run task.py` and let this robust Python architecture do the heavy lifting without visual spaghetti!
 
 </details>
 
 **🔨 Implementation Steps:**
 
-The architecture is complete, and we are finally ready to process Sarah's real invoices against the live (mock) ERP system! 
+The architecture is complete, and we are finally ready to process Sarah's real invoices against the live (mock) ERP system!
 
 1. **Create `task.py` in the root directory:**
-   *What are we doing?* We are creating the execution script. We import our real infrastructure (`FastAPIClient`), inject it into our Orchestrator (`InvoiceProcessor`), and run the process. Notice how clean and readable this file is!
-   *Challenge: Create the main execution file. Import the real `FastAPIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
-   
+
+   *What are we doing?*
+
+   * We are creating the execution script.
+   * We import our real infrastructure (`APIClient`), inject it into our Orchestrator (`InvoiceProcessor`), and run the process.
+
+   Notice how clean and readable this file is!
+
+   *Challenge: Create the main execution file. Import the real `APIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hints]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import logging
-   from src.infrastructure.api_client import FastAPIClient
+   from src.infrastructure.api_client import APIClient
    from src.application.processor import InvoiceProcessor
    
    # Configure basic logging so we can see the output in the terminal
@@ -1023,7 +1249,7 @@ The architecture is complete, and we are finally ready to process Sarah's real i
        print("Starting Invoice Processing Bot...")
    
        # 1. Initialize the real Infrastructure client (Connecting to the outside world!)
-       api_client = FastAPIClient()
+       api_client = APIClient()
    
        # 2. Inject the real client into the Application Orchestrator (Dependency Injection)
        processor = InvoiceProcessor(api_client=api_client)
@@ -1037,12 +1263,14 @@ The architecture is complete, and we are finally ready to process Sarah's real i
    if __name__ == "__main__":
        main()
    ```
-   
+
+   </details>
    </details>
 
-2. **Execute your completed bot (End-to-End Test):** 
-   Run the process using `uv` to ensure it executes securely inside your isolated virtual environment. This proves the entire system works from end to end!
-   
+2. **Execute your completed bot (End-to-End Test):**
+
+   Run the process using `uv` to ensure it executes inside your isolated virtual environment. This proves the entire system works from end to end!
+
    ```bash
    uv run task.py
    ```
@@ -1050,30 +1278,42 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 ### Step 9: Observability & Enterprise Deployment
 
 <details>
-<summary><b>📚 Theory: Structured Logs & Azure Architecture (Learn More)</b></summary>
+<summary><b>📚 Click here to learn more about: Structured Logs & Azure Architecture</b></summary>
 
 > **1. The 12-Factor App on Logs**
-> Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern. Servers and cloud containers are ephemeral; if the machine dies, your logs are permanently deleted. Instead, modern bots output **Event Streams** to the terminal (`stdout`), allowing log routers to securely transport them off-site.
-> 
+>
+> Legacy RPA frameworks generate static `log.html` or `stdout.log` files on the local hard drive. The **12-Factor App** principles state this is an anti-pattern. Servers and cloud containers are ephemeral; if the machine dies, your logs are permanently deleted.
+>
+> Instead, modern bots output **Event Streams** to the terminal (`stdout`), allowing log routers to transport them off-site.
+>
 > **2. Strings vs. Structured JSON**
-> How should you write a log? 
+>
+> How should you write a log?
+>
 > * *Bad (Strings):* `logger.info(f"Invoice {inv_id} processed for {amount}")`. To search for this in Azure, you have to write horrible Regex queries.
 > * *Good (Structured JSON):* `logger.info("invoice_processed", invoice_id=inv_id, amount=amount)`. This natively outputs a JSON dictionary. You can easily query: `SELECT * FROM logs WHERE amount > 5000`.
-> 
+>
 > **3. Contextual Binding (Tracing)**
+>
 > In `structlog`, you can `bind()` context to a logger. If you bind the `invoice_id` at the start of a `for` loop, every single log event fired inside that loop will automatically attach that `invoice_id` to its JSON payload. This creates a perfect audit trace for Azure Application Insights, Datadog, Splunk, or Elasticsearch!
-> 
+>
 > **4. Observability Best Practices**
+>
 > * **INFO:** Standard business events (e.g., `invoice_approved`).
 > * **WARNING:** Expected edge cases that require human intervention (e.g., `manual_review_required`).
 > * **ERROR:** Unexpected system crashes (e.g., `erp_database_timeout`).
-> 
+>
+> [to do: analyze and extend this section; how can we distinct business logic errors, technical erros, manual abort in logs but also in Python exceptions? should we create our own exceptions?]
+>
 > **5. Enterprise Deployment (Azure Architecture)**
+>
 > Because we followed DDD and 12-Factor principles, our code is 100% portable. Here is how you deploy it:
-> * **On-Premises (Hybrid):** Run via Windows Task Scheduler. Use the `azure-monitor-opentelemetry` Python package to securely pipe your `structlog` stream through the corporate firewall into Azure Application Insights.
+>
+> * **On-Premises (Hybrid):** Run via PAD flow or Windows Task Scheduler. Use the `azure-monitor-opentelemetry` Python package to pipe your `structlog` stream through the corporate firewall into Azure Application Insights.
 > * **Cloud Native (Azure Container Apps/AKS):** Package the bot in a `Dockerfile`. Azure automatically intercepts the JSON `stdout` stream from Step 9 with zero code changes!
-> * **Serverless (Azure Functions):** Wrap `processor.run()` in a Time-Triggered Function. You pay $0 when the bot is idle. 
+> * **Serverless (Azure Functions):** Wrap `processor.run()` in a Time-Triggered Function.
 >   * *Template Example:*
+>
 >     ```python
 >     import azure.functions as func
 >     from task import main
@@ -1083,27 +1323,45 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 >     def erp_bot(myTimer: func.TimerRequest) -> None:
 >         main()
 >     ```
+>
 > * **Low-Code Orchestration (Azure Logic Apps):** If the ERP requires legacy XML SOAP authentication, let a Logic App handle the complex Auth visual flow, and have it trigger your Azure Function purely for the Pydantic math validation.
 
 </details>
+
+[to do: add explanation why we implemented logging (bad pracice) and now changing that; it's because we wanted to show standard logging and focus on differnt topics and now apply the good practice]
 
 **🔨 Implementation Steps:**
 
 Sarah loves the bot, but audit season is approaching. She needs a perfectly queryable audit trail showing exactly *why* every invoice was approved or rejected. The legacy `log.html` won't cut it. We are going to implement enterprise-grade Structured JSON logging.
 
 1. **Add the modern logging library:**
-   *What are we doing?* We are installing `structlog`, the industry standard for structured Python logging.
+
+   *What are we doing?*
+
+   * We are installing `structlog`, the industry standard for structured Python logging.
+
    ```bash
    uv add structlog
    ```
 
-2. **Update your Orchestrator (`src/application/processor.py`):**
-   *What are we doing?* We replace standard `logging` with `structlog`. Inside the processing loop, we create a bound logger (`log = logger.bind(...)`). Now, every time we log `manual_review_required` or `invoice_approved`, the Invoice ID and Amount are perfectly captured in the JSON payload!
+2. **Refactor your Orchestrator (`src/application/processor.py`):**
+
+   *What are we doing?*
+
+   * We replace standard `logging` with `structlog`.
+   * Inside the processing loop, we create a bound logger (`log = logger.bind(...)`). Now, every time we log `manual_review_required` or `invoice_approved`, the Invoice ID and Amount are captured in the JSON payload!
+  
    *Challenge: Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context!*
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hints]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import structlog
    from src.domain.models import Invoice
@@ -1137,16 +1395,27 @@ Sarah loves the bot, but audit season is approaching. She needs a perfectly quer
                    self.api_client.approve_invoice(inv.id)
                    log.info("invoice_approved")
    ```
-   
+
+   </details>
    </details>
 
 3. **Update your Entry Point (`task.py`):**
-   *What are we doing?* We tell `structlog` to render all log events as JSON strings, and inject an ISO-8601 timestamp into every payload automatically.
+
+   *What are we doing?* 
+
+   * We tell `structlog` to render all log events as JSON strings, and inject an ISO-8601 timestamp into every payload automatically.
+
    *Challenge: Configure `structlog` to output as JSON with an ISO timestamp.*
-   
+
    <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
-   
+   <summary><b>💡 Click here for hints</b></summary>
+
+   > **Hints:**
+    [to do: add hints]
+
+   <details>
+   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+
    ```python
    import structlog
    from src.infrastructure.api_client import FastAPIClient
@@ -1174,11 +1443,14 @@ Sarah loves the bot, but audit season is approaching. She needs a perfectly quer
    if __name__ == "__main__":
        main()
    ```
-   
+
+   </details>
    </details>
 
 4. **Run the bot:**
+
    Execute the bot. Look at your terminal! You will see machine-readable JSON logs that cloud dashboards (Azure, Datadog, Splunk) can natively parse and query.
+
    ```bash
    uv run task.py
    ```
@@ -1187,14 +1459,16 @@ Sarah loves the bot, but audit season is approaching. She needs a perfectly quer
 
 ### 🏆 Achievement Unlocked: Automation Architect
 
-**You absolutely nailed it.** 
+**You absolutely nailed it.**
 
-You didn't just write a script; you engineered a robust, decoupled, 12-factor cloud-native masterpiece. You took Sarah's fragile Excel macro, extracted the spaghetti logic, banished the random 503 network crashes using exponential backoff, and wrapped it all in an impenetrable fortress of Pydantic validation and unit tests.
+Congratulations! You didn't just write a script; you engineered a robust, decoupled, 12-factor cloud-native masterpiece. You took Sarah's fragile Excel macro, extracted the spaghetti logic, banished the random 503 network crashes using exponential backoff, and wrapped it all in an impenetrable fortress of Pydantic validation and unit tests.
 
-The dark days of debugging `NameError: 'data' is undefined` in a 3,000-line `tasks.py` file at 2:00 AM are officially over. 
+The dark days of debugging `NameError: 'data' is undefined` in a 3,000-line `tasks.py` file at 2:00 AM are officially over.
 
-By mastering Domain-Driven Design, SOLID principles, and structured JSON observability, you haven't just learned how to build modern Python automation solutions—you have future-proofed your career. 
+By mastering Domain-Driven Design, SOLID principles, and structured JSON observability, you haven't just learned how to build modern Python automation solutions—you have future-proofed your career.
 
-Here is the secret: **AI Agents** (like OpenAI Swarm, LangChain, or AutoGen) *hate* messy code. They need strict data contracts (Pydantic), isolated tools (Infrastructure), and clear orchestrator boundaries to function autonomously without destroying production. By building this architecture today, you are now one massive step closer to the AI Era. You aren't just an RPA Developer anymore; you are an AI Systems Architect.
+Here is the secret: **AI Agents** (like OpenAI Swarm, LangChain, or AutoGen) *hate* messy code. They need strict data contracts (Pydantic), isolated tools (Infrastructure), and clear orchestrator boundaries to function autonomously without destroying production.
 
-Go grab a coffee. You've earned it. ☕🚀
+By building this architecture today, you are now one massive step closer to the AI Era. You aren't just an RPA Developer anymore; you are an AI Systems Architect.
+
+Go grab a cake or chicken leg. You've earned it. ☕🚀
