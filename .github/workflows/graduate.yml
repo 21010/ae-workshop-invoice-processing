@@ -29,6 +29,8 @@ jobs:
         run: |
           # The pipeline will fail here if the student hasn't finished the tests!
           uv run pytest
+          # Ensure the resilience test exists
+          grep -q "def test_fetch_pending_invoices_skips_corrupted_invoice" tests/unit/test_api_client.py || (echo "Missing resilience test!" && exit 1)
 
       - name: Generate Certificate
         if: success() # Only runs if pytest passed!

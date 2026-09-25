@@ -39,7 +39,7 @@ Before you start writing code, you need your own copy of this project so you can
 
 Sarah described her problem using a specific, fragile technical solution (a UI-clicking macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
 
-### The Manual Process (As-Is)
+> **Caveat:** API-driven Python is strictly better *when an API exists*. For legacy mainframe green-screens, SAP GUI without BAPI, or vendor portals lacking REST endpoints, traditional RPA (UI automation) remains the correct architectural choice.\n\n### The Manual Process (As-Is)
 *Here is how Sarah's team currently processes invoices manually:*
 
 1. Open the Google Chrome browser and navigate to the internal ERP portal.
@@ -47,10 +47,10 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 3. Click on the "Finance Dashboard" tab.
 4. Click on "Pending Vendor Invoices" to load the grid.
 5. For each invoice in the list:
-   * Open the Windows Calculator app.
+   * Open the Windows Calculator app *(Note: This step is deliberately exaggerated for teaching purposes)*.
    * Add up every single line item on the screen manually.
    * Check if the calculator total matches the "Total Amount" on the screen (If it doesn't, skip it).
-   * Check if the Total Amount is greater than $10,000 (If it is, skip it so the manager can review it).
+   * Check if the Total Amount is greater than $10,000 (If it is, skip it so the manager can review it). *(Note: A real AP control set would also include PO three-way match and vendor whitelisting)*
    * If the math is correct and it is under $10,000, click the green "Approve" button.
 6. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
 
@@ -134,7 +134,7 @@ Before writing code, we must translate Sarah's request into a strict DDD enginee
 >   * *Windows:* `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
 >   * *macOS/Linux:* `curl -LsSf https://astral.sh/uv/install.sh | sh`
 > * **How it manages virtual environments:** When you run commands like `uv run`, it automatically and implicitly creates an isolated `.venv` folder. It resolves dependencies in milliseconds and uses a global cache so you never download the same package twice.
-> * **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_PREVIEW_FEATURES=malware-check` (Linux) or `$env:UV_PREVIEW_FEATURES="malware-check"` (Windows).
+> * **Security (Audit Feature):** `uv` has built-in malware checking to prevent supply chain attacks. You can enable it via environment variables: `export UV_MALWARE_CHECK=1` (Linux) or `$env:UV_MALWARE_CHECK="1"` (Windows).
 > 
 > **3. Basic `uv` Commands**
 > 
@@ -160,7 +160,7 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
    This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
    
    ```bash
-   uv init
+   uv init --no-package --python 3.12
    ```
 2. **Add production dependencies:**
    *Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
@@ -224,11 +224,12 @@ Now that our environment is built, we need to protect it. We are going to set up
    <summary><b>💡 Click here to copy the pre-commit configuration</b></summary>
    
    ```yaml
-   repos:
-     - repo: https://github.com/trufflesecurity/trufflehog
-       rev: v3.73.0
-       hooks:
-         - id: trufflehog
+   fail_fast: true
+repos:
+     - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
      - repo: local
        hooks:
          - id: ruff
@@ -275,7 +276,7 @@ Now that our environment is built, we need to protect it. We are going to set up
    uv run pre-commit install
    ```
 
-### Step 3: Architecting the Foundation (DDD & Testing)
+\n> **⚠️ Security Note:** The `.github/workflows/graduate.yml` auto-commits and pushes to `main` without review. This is deliberately simplified for a disposable classroom project and should *never* be used in production repositories without branch protection and required PR reviews.\n\n### Step 3: Architecting the Foundation (DDD & Testing)
 
 <details>
 <summary><b>📚 Theory: Domain-Driven Isolation & Test Strategies (Learn More)</b></summary>
@@ -446,6 +447,7 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    from pydantic import BaseModel, model_validator
    
    class LineItem(BaseModel):
+       model_config = {"frozen": True}
        description: str
        amount: float
    
@@ -458,9 +460,9 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
    
        @model_validator(mode="after")
        def check_math(self):
-           calculated_total = sum(item.amount for item in self.line_items)
-           if calculated_total != self.total_amount:
-               raise ValueError(f"Math Error! Total {self.total_amount} != Sum {calculated_total}")
+           # TODO: Calculate the sum of all item amounts in self.line_items
+           # TODO: Compare the sum to self.total_amount using math.isclose(..., abs_tol=0.01)
+           # TODO: If they don't match, raise a ValueError
            return self
    ```
    
@@ -491,6 +493,23 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 
 3. **Run the Defense Test:** 
    Execute the unit test to verify your math validator works perfectly.
+   
+   ```python
+   @pytest.mark.unit
+   @patch("src.infrastructure.api_client.requests.get")
+   def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
+       mock_response = Mock()
+       mock_response.json.return_value = [
+           {"id": "GOOD-1", "vendor": "A", "currency": "USD",
+            "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
+           {"id": "BAD-1", "vendor": "A", "currency": "USD",
+            "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
+       ]
+       mock_get.return_value = mock_response
+       invoices = FastAPIClient().fetch_pending_invoices()
+       assert [inv.id for inv in invoices] == ["GOOD-1"]
+   ```
+
    ```bash
    uv run pytest -m unit
    ```
@@ -571,18 +590,19 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    
    class FastAPIClient:
        def fetch_pending_invoices(self) -> list[Invoice]:
-           # BEST PRACTICE: Always set a timeout!
-           response = requests.get("http://127.0.0.1:8080/api/invoices/pending", timeout=10)
-           response.raise_for_status()
-           # BEST PRACTICE: Immediately parse JSON into Pydantic models!
-           return [Invoice(**item) for item in response.json()]
+           # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
+           # TODO: Set a timeout (e.g., 10 seconds)
+           # TODO: Raise for status
+           # TODO: Loop through the JSON response and parse each item into an Invoice model
+           # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
+           pass
    
-       # BEST PRACTICE: Exponential backoff for network resilience!
-       @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
+       # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
        def approve_invoice(self, invoice_id: str) -> bool:
-           response = requests.post(f"http://127.0.0.1:8080/api/invoices/{invoice_id}/approve", timeout=10)
-           response.raise_for_status()
-           return True
+           # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
+           # TODO: Set a timeout
+           # TODO: Raise for status
+           pass
    ```
    
    </details>
@@ -729,13 +749,12 @@ In Sarah's email, she hinted that if this tool is successful, management might d
            self.threshold = 10000.0
    
        def run(self):
-           invoices = self.api_client.fetch_pending_invoices()
-           for inv in invoices:
-               if inv.total_amount > self.threshold:
-                   logger.warning(f"Manual Review required for {inv.id}")
-               else:
-                   self.api_client.approve_invoice(inv.id)
-                   logger.info(f"Approved {inv.id}")
+           # TODO: Fetch pending invoices using self.api_client
+           # TODO: Loop through the invoices
+           # TODO: If the invoice total is > self.threshold, log a warning
+           # TODO: Otherwise, try to approve the invoice
+           # TODO: Wrap the approval in a try/except block so a failure doesn't crash the loop!
+           pass
    ```
    
    </details>
@@ -754,7 +773,7 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 > * **D**omain-based: Structuring folders by business domain.
 > 
 > **2. The Testing Spectrum**
-> To build a reliable bot, we need all three layers of the testing pyramid:
+> To build a reliable bot, we discuss all three layers (though this workshop only builds Unit and Integration tests):
 > * **Unit Tests (Step 4 & 5):** We tested our Pydantic math in total isolation. We tested our `FastAPIClient` by mocking the `requests` library.
 > * **Integration Tests (This Step):** Here, we test the **wiring** between our Application Orchestrator and our Domain models. Does the Orchestrator correctly apply the $10,000 threshold rule?
 > * **End-to-End (E2E) Tests (Next Step):** Does the entire script actually work when we hit the real ERP system? 
@@ -931,7 +950,7 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 >     from task import main
 >     
 >     app = func.FunctionApp()
->     @app.schedule(schedule="0 */15 * * * *", arg_name="myTimer") # Run every 15 minutes
+>     @app.timer_trigger(schedule="0 */5 * * * *", arg_name="timer", run_on_startup=False)(schedule="0 */15 * * * *", arg_name="myTimer") # Run every 15 minutes
 >     def erp_bot(myTimer: func.TimerRequest) -> None:
 >         main()
 >     ```
