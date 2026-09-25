@@ -225,11 +225,11 @@ Now that our environment is built, we need to protect it. We are going to set up
    
    ```yaml
    fail_fast: true
-repos:
+   repos:
      - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.2
-    hooks:
-      - id: gitleaks
+       rev: v8.18.2
+       hooks:
+         - id: gitleaks
      - repo: local
        hooks:
          - id: ruff
@@ -248,11 +248,13 @@ repos:
            entry: uv run bandit -c pyproject.toml -r src/
            language: system
            types: [python]
+           pass_filenames: false
          - id: pyrefly
            name: pyrefly
            entry: uv run pyrefly check
            language: system
            types: [python]
+           pass_filenames: false
          - id: uv-audit
            name: uv audit
            entry: uv audit
@@ -265,7 +267,7 @@ repos:
            language: system
            pass_filenames: false
            always_run: true
-   ```
+   `
    
    </details>
 
