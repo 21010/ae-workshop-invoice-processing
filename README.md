@@ -2,7 +2,7 @@
 
 Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**.
 
-## ⚠️ Prerequisite: Get Your Own Copy of this Repository
+## Prerequisite: Get Your Own Copy of this Repository
 
 > Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate!
 
@@ -13,7 +13,7 @@ Welcome to the hands-on guided project! In this session, you will evolve from tr
 3. Click the green **`<> Code`** button on your repository, switch to the **Codespaces** tab, and click **Create codespace on main**. *(Do not create a Codespace on the original repository!)*
 4. When you finish the masterclass and push your code, GitHub Actions will automatically grade your work and award a certificate directly to your repository!
 
-## 1. The Business Request (From the Finance Team)
+## The Business Request (From the Finance Team)
 
 *You have just received the following email from Sarah in the Finance Department:*
 
@@ -58,16 +58,15 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 
 ---
 
-## 2. Engineering the Solution (Step-by-Step)
+## Engineering the Solution (Step-by-Step)
 
 Sarah's manual process is slow, error-prone, and mind-numbing. We are not going to build the fragile screen-scraping macro she asked for. Instead, we are going to build an enterprise-grade, API-driven Python backend that operates invisibly and never breaks when the UI changes.
 
 Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
 
-### 2.1 Process Analysis & Architecture Design
+### Process Analysis & Architecture Design
 
 <details>
-
 <summary><b>📚 Click here to learn more about: Business Analysis & Domain-Driven Design</b></summary>
 
 > **1. Understand the Business Domain**
@@ -85,36 +84,51 @@ Your workspace is completely empty (except for this guide and a ERP API running 
 > **4. Hexagonal Architecture (Ports and Adapters)**
 >
 > DDD separates the core business rules from the technical implementation. The mathematical validation of an Invoice does not care if the data came from a REST API or a database. By separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts.
-> [to do: explain what Ports and Adapters are]
+> Ports and Adapters (also known as Hexagonal Architecture) is a pattern that isolates your core business logic (the hexagon) from outside concerns. A "Port" is the interface your application exposes (e.g., fetching an invoice), while an "Adapter" is the technical implementation that plugs into that port (e.g., a REST API client or a SQL database query). This decouples your core logic from external dependencies, making the system highly testable and resilient to technology changes.
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Before writing code, we must translate Sarah's request into a strict DDD engineering plan:
 
-1. **Understand the Domain & Identify Risks:**
+#### Understand the Domain & Identify Risks
 
-**The Core Workflow**
+##### The Core Workflow
 
 Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
 
-[to do: add as-is BPMN diagram using domain language]
+   ```mermaid
+   flowchart TD
+       A((Start)) --> B(Log into ERP Portal)
+       B --> C(Navigate to Pending Invoices)
+       C --> D{Invoices Remain?}
+       D -- Yes --> E(Calculate Sum of Line Items)
+       E --> F{Sum == Total?}
+       F -- No --> G(Skip Invoice - Corrupted Data)
+       F -- Yes --> H{Total < $10k?}
+       H -- No --> I(Skip for Manual Review)
+       H -- Yes --> J(Click Approve)
+       G --> D
+       I --> D
+       J --> D
+       D -- No --> K((End))
+   ```
 
-**Risks**
+##### Risks
 
 | ID | Type | Risk | Mitigation |
 | :- | :--- | :--- | :--------- |
 | R-01 | Domain Risk | The upstream system occasionally sends corrupted payloads where the math does not add up. | We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic. |
 | R-02 | Infrastructure Risk | The target ERP API is known to drop connections and throw 503 errors. | We will isolate all API calls and wrap them in an exponential backoff retry loop. |
 
-2. **Define the Ubiquitous Language & Entities**
+#### Define the Ubiquitous Language & Entities
 
 Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
 
-[to do: verify if we should extend this section]
+In addition to the `Invoice` and `LineItem`, we also define `Vendor` and `Currency` as important attributes of the domain. It's crucial that our internal Python attributes (e.g., `total_amount`) exactly map to the business vocabulary, avoiding generic or misleading terms.
 
-3. **Map the Architecture Layers**
+#### Map the Architecture Layers
 
 We will not write a single, procedural script. Instead, we divide the responsibilities:
 
@@ -122,7 +136,7 @@ We will not write a single, procedural script. Instead, we divide the responsibi
 * **The Domain Layer:** This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules.
 * **The Application Layer:** This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices.
 
-4. **Design the Automated Workflow (To-Be)**
+#### Design the Automated Workflow (To-Be)
 
 Instead of opening Chrome and calculating math manually, our API-driven Python backend will execute the following architecture:
 
@@ -142,9 +156,9 @@ Instead of opening Chrome and calculating math manually, our API-driven Python b
        Next --> Loop
    ```
 
-[to do: verify if the diagram needs refinements; analyze if we should add or replace BPMN diagram with UML diagram]
+This flowchart accurately models the target state. We use this behavioral flow diagram rather than a static UML class diagram because our primary goal is to map the orchestration of the workflow and the business rules, rather than purely focusing on object inheritance.
 
-### 2.2. Project Initialization
+### Project Initialization
 
 <details>
 <summary>
@@ -186,54 +200,54 @@ Instead of opening Chrome and calculating math manually, our API-driven Python b
 > * `[project]`: Defines the project metadata (name, version, python version requirement).
 > * `dependencies`: An array of required production libraries (e.g., `requests`, `pydantic`). These are what gets shipped to the server.
 > * `[dependency-groups]`: Defines the `dev` array for local tools (e.g., `pytest`, `ruff`). By cleanly separating dev tools, we ensure our production Docker containers remain small, fast, and secure.
-
-[to do: verify if the theory around pyproject.toml should be extended to include the typical structure, common patterns and best practices]
+> * `[build-system]`: Tells packaging tools how to build your project (e.g., using `hatchling` or `setuptools`). By centralizing this in `pyproject.toml`, Python standardizes project builds and eliminates the need for legacy `setup.py` scripts.
+> * `[project.scripts]`: Allows you to define command-line entry points for your bot, making it executable from anywhere in the terminal.
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file or relied on proprietary RPA wrappers like `rcc` (Robocorp).
 
 Today, you are going to initialize a strict, reproducible, and open-source environment using `uv`. We will explicitly define our production dependencies (what the bot needs to run) and our development dependencies (what we need to build it securely).
 
-1. **Update `uv`**
+#### Update `uv`
 
-   [to do: fill in this section; explain why we are doing that]
+   It is a best practice to ensure you are running the latest version of `uv`. Because `uv` is heavily optimized and frequently updated with new features and security patches, running `uv self update` ensures you have the most stable release before scaffolding a new project.
 
    ```bash
    uv self update
    ```
 
-2. **Initialize the project in the terminal:**
+#### Initialize the project in the terminal
 
-    This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
+This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
 
-    ```bash
-    uv init --no-package --python 3.12
-    ```
+```bash
+uv init --no-package --python 3.12
+```
 
-3. **Add production dependencies:**
+#### Add production dependencies
 
-    *Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
+*Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
 
-    ```bash
-    uv add pydantic requests tenacity
-    ```
+```bash
+uv add pydantic requests tenacity
+```
 
-4. **Add development dependencies:**
+#### Add development dependencies
 
-    *Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
+*Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
 
-   ```bash
-   uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
-   ```
+```bash
+uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
+```
 
-5. **Analyze the Configuration:**
+#### Analyze the Configuration
 
-   Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
+Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
 
-### 2.3. Building Automated Security Guardrails
+### Building Automated Security Guardrails
 
 <details>
 <summary><b>📚 Click here to learn more about : Shift-Left Security & Tooling</b></summary>
@@ -266,23 +280,23 @@ Today, you are going to initialize a strict, reproducible, and open-source envir
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Now that our environment is built, we need to protect it. We are going to set up automated guardrails so that nobody on your team can ever commit sloppy or insecure code.
 
-1. **Enforce the modern 'main' branch standard:**
+#### Enforce the modern 'main' branch standard
 
-   When you ran `uv init` in Step 1, it automatically initialized a Git repository for you behind the scenes. However, older Git configurations often default to the legacy `master` branch. Let's rename it to the modern industry standard `main`.
+When you ran `uv init` in Step 1, it automatically initialized a Git repository for you behind the scenes. However, older Git configurations often default to the legacy `master` branch. Let's rename it to the modern industry standard `main`.
 
-   ```bash
-   git branch -M main
-   ```
+```bash
+git branch -M main
+```
 
-2. **Set up the automated security gates:**
+#### Set up the automated security gates
 
    Create a file named `.pre-commit-config.yaml` in the root directory.
 
-   *Connecting the tools:* Remember those `--dev` tools we installed in Step 1? We are now configuring Git to use them! Notice how we force Git to execute them locally via `uv run`. This guarantees that tools like `ruff` (for formatting) and `bandit` (for scanning Python vulnerabilities) run securely inside our isolated environment. We also add `trufflehog` to scan for accidentally hardcoded API keys or passwords.
+   > **Connecting the tools:** Remember those `--dev` tools we installed in Step 1? We are now configuring Git to use them! Notice how we force Git to execute them locally via `uv run`. This guarantees that tools like `ruff` (for formatting) and `bandit` (for scanning Python vulnerabilities) run securely inside our isolated environment. We also add `trufflehog` to scan for accidentally hardcoded API keys or passwords.
 
    <details>
    <summary><b>💡 Click here to copy the pre-commit configuration</b></summary>
@@ -334,19 +348,19 @@ Now that our environment is built, we need to protect it. We are going to set up
            language: system
            pass_filenames: false
            always_run: true
-   `
-   
-   </details>
-
-3. **Install the hooks into Git:**
-
-   Finally, we must tell Git to actually read the file we just created. Run the command below. From this moment on, your code will be automatically scanned every single time you try to commit!
-
-   ```bash
-   uv run pre-commit install
    ```
 
-### 2.4. [to do: fix the problem ad re-add step 3 title]
+   </details>
+
+#### Install the hooks into Git
+
+Finally, we must tell Git to actually read the file we just created. Run the command below. From this moment on, your code will be automatically scanned every single time you try to commit!
+
+```bash
+uv run pre-commit install
+```
+
+### [to do: fix the problem ad re-add title to this section]
 
 <details>
 <summary><b>📚 Click here to learn more about: Domain-Driven Isolation & Test Strategies</b></summary>
@@ -414,65 +428,66 @@ Now that our environment is built, we need to protect it. We are going to set up
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Now that our environment is locked down by Git and `pre-commit`, it is time to physically build the folders for our Domain-Driven Design and our Testing framework.
 
-1. **Scaffold the Architecture (Windows PowerShell):**
+#### Scaffold the Architecture
 
-   *Why these folders?* We are creating boundaries.
+*Why these folders?* We are creating boundaries.
 
-   * The core logic goes in `domain`,
-   * The HTTP requests go in `infrastructure`,
-   * The orchestrator goes in `application`.
-   * The tests are similarly segregated between `unit` and `integration`.
+* The core logic goes in `domain`,
+* The HTTP requests go in `infrastructure`,
+* The orchestrator goes in `application`.
+* The tests are similarly segregated between `unit` and `integration`.
 
-   ```powershell
-   New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
+```powershell
+New-Item -ItemType Directory -Force -Path src/domain, src/application, src/infrastructure, tests/unit, tests/integration
+```
+
+#### Initialize them as Python Modules
+
+Create an empty `__init__.py` file inside each folder so Python can import them.
+
+We will also add an empty `conftest.py` file to our tests folder, preparing it for shared testing fixtures later.
+
+```powershell
+New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
    ```
 
-2. **Initialize them as Python Modules:**
+#### Configure Pytest Markers
 
-   Create an empty `__init__.py` file inside each folder so Python can import them.
+We told our `pre-commit` hook to only run tests marked as `unit`.
 
-   We will also add an empty `conftest.py` file to our tests folder, preparing it for shared testing fixtures later.
+We must register this custom label in our `pyproject.toml` so Pytest understands it. Open `pyproject.toml` and add this block to the bottom:
 
-   ```powershell
-   New-Item -ItemType File -Force -Path src/domain/__init__.py, src/application/__init__.py, src/infrastructure/__init__.py, tests/__init__.py, tests/conftest.py
-   ```
+```toml
+[tool.pytest.ini_options]
+markers = [
+    "unit: mark a test as a unit test.",
+    "integration: mark a test as an integration test."
+]
+```
 
-3. **Configure Pytest Markers:**
+#### Verify the Final Structure
 
-   We told our `pre-commit` hook to only run tests marked as `unit`.
+By the end of this workshop, your project tree will look exactly like this:
 
-   We must register this custom label in our `pyproject.toml` so Pytest understands it. Open `pyproject.toml` and add this block to the bottom:
+```text
+/ project-root
+┣ src/
+┃ ┣ domain/               # Step 4: Core business logic and data validation (Pydantic)
+┃ ┣ infrastructure/       # Step 5: External API clients and network resilience (Tenacity)
+┃ ┗ application/          # Step 6: The orchestrator that glues Domain & Infrastructure together
+┣ tests/
+┃ ┣ conftest.py           # Shared mock data and fixtures for Pytest
+┃ ┣ unit/                 # Fast tests for business logic (no network required)
+┃ ┗ integration/          # Complex tests using Mock APIs to prove the orchestrator works
+┣ .pre-commit-config.yaml # Step 2: Security and formatting guardrails
+┗ pyproject.toml          # Step 1: Environment and dependency definitions
+```
 
-   ```toml
-   [tool.pytest.ini_options]
-   markers = [
-       "unit: mark a test as a unit test.",
-       "integration: mark a test as an integration test."
-   ]
-   ```
-
-4. **Verify the Final Structure:**
-   By the end of this workshop, your project tree will look exactly like this:
-
-   ```text
-   / project-root
-   ┣ src/
-   ┃ ┣ domain/               # Step 4: Core business logic and data validation (Pydantic)
-   ┃ ┣ infrastructure/       # Step 5: External API clients and network resilience (Tenacity)
-   ┃ ┗ application/          # Step 6: The orchestrator that glues Domain & Infrastructure together
-   ┣ tests/
-   ┃ ┣ conftest.py           # Shared mock data and fixtures for Pytest
-   ┃ ┣ unit/                 # Fast tests for business logic (no network required)
-   ┃ ┗ integration/          # Complex tests using Mock APIs to prove the orchestrator works
-   ┣ .pre-commit-config.yaml # Step 2: Security and formatting guardrails
-   ┗ pyproject.toml          # Step 1: Environment and dependency definitions
-   ```
-
-### 2.5. Forging the Domain (Defending Against Corrupted Data)
+### Forging the Domain (Defending Against Corrupted Data)
 
 <details>
 <summary><b>📚 Click here to learn more about: Defensive Data Modeling & Pydantic</b></summary>
@@ -532,117 +547,129 @@ Now that our environment is locked down by Git and `pre-commit`, it is time to p
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Sarah's business requirement explicitly stated that the ERP math is sometimes corrupted. We cannot trust the incoming data. We are going to build an impenetrable wall in our `domain` layer that strictly validates every single invoice before the orchestrator is even allowed to look at it.
 
-1. **Create the Data Models (`src/domain/models.py`):**
+#### Create the Data Models (`src/domain/models.py`)
 
-   *What are we doing?* We are creating the strict definitions for `LineItem` and `Invoice`. We are also writing a custom validator to explicitly perform the math check that Sarah requested.
+> *What are we doing?*
+>
+> * We are creating the strict definitions for `LineItem` and `Invoice`.
+> * We are also writing a custom validator to explicitly perform the math check that Sarah requested.
 
-   *Challenge: Try to write the `LineItem` and `Invoice` Pydantic models yourself!
+**Challenge:** *Try to write the `LineItem` and `Invoice` Pydantic models yourself! Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
 
-   Use the `@model_validator(mode="after")` decorator to sum the line items and raise a `ValueError` if the math is wrong.*
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> **Hints:**
+>
+> * You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. 
+> * You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
+>
 
-   > **Hints:**
-   >
-   > * You will need to use the `@model_validator(mode="after")` decorator. This ensures Pydantic casts all the types first so you can safely iterate over `self.line_items`. 
-   > * You can sum the amounts using a generator expression like `sum(item.amount for item in self.line_items)`.
-   >
+<details>
+<summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
 
-   <details>
-   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
+```python
+from pydantic import BaseModel, model_validator
 
-   ```python
-   from pydantic import BaseModel, model_validator
-   
-   class LineItem(BaseModel):
-       model_config = {"frozen": True}
-       description: str
-       amount: float
-   
-   class Invoice(BaseModel):
-       id: str
-       vendor: str
-       currency: str
-       line_items: list[LineItem]
-       total_amount: float
-   
-       @model_validator(mode="after")
-       def check_math(self):
-           # TODO: Calculate the sum of all item amounts in self.line_items
-           # TODO: Compare the sum to self.total_amount using math.isclose(..., abs_tol=0.01)
-           # TODO: If they don't match, raise a ValueError
-           return self
-   ```
+class LineItem(BaseModel):
+    model_config = {"frozen": True}
+    description: str
+    amount: float
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+class Invoice(BaseModel):
+    id: str
+    vendor: str
+    currency: str
+    line_items: list[LineItem]
+    total_amount: float
 
-   ```python
-   import math
-   from pydantic import BaseModel, model_validator
-   
-   class LineItem(BaseModel):
-       model_config = {"frozen": True}
-       description: str
-       amount: float
-   
-   class Invoice(BaseModel):
-       id: str
-       vendor: str
-       currency: str
-       line_items: list[LineItem]
-       total_amount: float
-   
-       @model_validator(mode="after")
-       def check_math(self):
-           calculated_total = sum(item.amount for item in self.line_items)
-           if not math.isclose(calculated_total, self.total_amount, abs_tol=0.01):
-               raise ValueError(f"Math Error! Total {self.total_amount} != Sum {calculated_total}")
-           return self
-    ```
+    @model_validator(mode="after")
+    def check_math(self):
+        # TODO: Calculate the sum of all item amounts in self.line_items
+        # TODO: Compare the sum to self.total_amount using math.isclose(..., abs_tol=0.01)
+        # TODO: If they don't match, raise a ValueError
+        return self
+```
 
-   </details>
-   </details>
-   </details>
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-2. **Prove the Defense Works (`tests/unit/test_domain.py`):**
+```python
+import math
+from pydantic import BaseModel, model_validator
 
-   *What are we doing?* We are practicing Test-Driven Development (TDD). Before we connect to the real API, we write a lightning-fast unit test simulating a corrupted invoice to definitively prove that our Pydantic model will reject it.
+class LineItem(BaseModel):
+    model_config = {"frozen": True}
+    description: str
+    amount: float
 
-   *Challenge: Write a Pytest function labeled `@pytest.mark.unit`. Create an invoice with bad math and use `with pytest.raises(ValueError):` to prove your validation catches it!*
+class Invoice(BaseModel):
+    id: str
+    vendor: str
+    currency: str
+    line_items: list[LineItem]
+    total_amount: float
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+    @model_validator(mode="after")
+    def check_math(self):
+        calculated_total = sum(item.amount for item in self.line_items)
+        if not math.isclose(calculated_total, self.total_amount, abs_tol=0.01):
+            raise ValueError(f"Math Error! Total {self.total_amount} != Sum {calculated_total}")
+        return self
+```
 
-   ```python
-   import pytest
-   from src.domain.models import Invoice, LineItem
-   
-   @pytest.mark.unit
-   def test_bad_math_is_rejected():
-       with pytest.raises(ValueError):
-           Invoice(
-               id="1", vendor="A", currency="USD",
-               line_items=[LineItem(description="Item", amount=50)],
-               total_amount=9000  # Data Corruption!
-           )
-   ```
+</details>
+</details>
+</details>
 
-   </details>
+#### Prove the Defense Works (`tests/unit/test_domain.py`)
 
-3. **Run the Defense Test:**
-   Execute the unit test to verify your math validator works perfectly.
+> *What are we doing?*
+>
+> * We are practicing Test-Driven Development (TDD).
+> * Before we connect to the real API, we write a lightning-fast unit test simulating a corrupted invoice to definitively prove that our Pydantic model will reject it.
 
-   ```bash
-   uv run pytest -m unit
-   ```
+**Challenge:** *Write a Pytest function labeled `@pytest.mark.unit`. Create an invoice with bad math and use `with pytest.raises(ValueError):` to prove your validation catches it!*
 
-### 2.6. Preparing the Infrastructure (Bridging the Unstable Outside World)
+<details>
+<summary><b>💡 Click here for hints</b></summary>
+
+> **Hints:**
+[to do: add hints]
+
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
+
+```python
+import pytest
+from src.domain.models import Invoice, LineItem
+
+@pytest.mark.unit
+def test_bad_math_is_rejected():
+    with pytest.raises(ValueError):
+        Invoice(
+            id="1", vendor="A", currency="USD",
+            line_items=[LineItem(description="Item", amount=50)],
+            total_amount=9000  # Data Corruption!
+        )
+```
+
+</details>
+</details>
+
+#### Run the Defense Test
+
+Execute the unit test to verify your math validator works perfectly.
+
+```bash
+uv run pytest -m unit
+```
+
+### Preparing the Infrastructure (Bridging the Unstable Outside World)
 
 <details>
 <summary><b>📚 Click here to learn more about: 12-Factor Apps, REST, and Network Resilience</b></summary>
@@ -660,17 +687,19 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 >
 > * `GET`: Retrieve data (e.g., fetch invoices). Must be **Idempotent** (running it 100 times doesn't change anything).
 > * `POST`: Create data or trigger actions (e.g., approve an invoice). Not inherently idempotent.
-> [to do: add missing HTTP verbs like PUT]
+> * `PUT`: Update or replace an entire existing resource (e.g., updating an invoice record). Idempotent.
+> * `PATCH`: Partially update an existing resource. Not strictly idempotent.
+> * `DELETE`: Remove a resource from the server.
 >
 > You must understand HTTP Status Codes to build resilient bots:
 >
 > * **200 OK / 201 Created:** Success!
+> * **301 Moved Permanently / 302 Found:** The resource has been moved. Most Python clients (like `requests`) will follow these redirects automatically.
 > * **400 Bad Request:** You sent bad data (e.g., malformed JSON).
 > * **401 Unauthorized / 403 Forbidden:** Your API key is invalid or lacks permissions.
 > * **404 Not Found:** The URL is wrong or the record doesn't exist.
 > * **500 Internal Server Error:** The server crashed (a bug on their end).
 > * **503 Service Unavailable:** The server is overloaded (Sarah's exact problem!).
-> [to do: verify if we have all common HTTP status codes; what about 3xx?]
 >
 > **3. Best Practices for REST in Python**
 >
@@ -711,216 +740,223 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Sarah's primary complaint was that the ERP system randomly throws `503 Service Unavailable` errors during peak hours, causing her legacy macro to crash instantly. We are going to build an API client that uses exponential backoff to patiently wait out the crashes, and automatically casts the raw JSON into the bulletproof Pydantic models we built in Step 4.
 
-1. **Analyze the ERP API (Swagger):**
+#### Analyze the ERP API (Swagger)
 
-   *Challenge: The ERP system is running locally on port `8080`.
+**Challenge:** *The ERP system is running locally on port `8080`.*
 
-   If you are using **GitHub Codespaces**, open the **Ports** tab (next to your Terminal), find Port `8080`, and click the "Open in Browser" globe icon. Then, add `/docs` to the end of the URL in your browser.
+If you are using **GitHub Codespaces**, open the **Ports** tab (next to your Terminal), find Port `8080`, and click the "Open in Browser" globe icon. Then, add `/docs` to the end of the URL in your browser.
 
-   Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them!*
+Read the OpenAPI contract to discover the exact HTTP verbs and endpoints needed to fetch pending invoices and approve them!*
 
-2. **Create the API Client (`src/infrastructure/api_client.py`):**
+#### Create the API Client (`src/infrastructure/api_client.py`)
 
-   *What are we doing?*
+> *What are we doing?*
+>
+> * We are building the `APIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call.
+> * We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
 
-   * We are building the `APIClient`. We use `requests` to handle the HTTP protocol, ensuring we set a strict `timeout` on every call.
-   * We then decorate our POST request with `@retry` to guarantee it survives Sarah's dreaded 503 errors.
+**Challenge**: *Build the client using the endpoints you discovered in the Swagger UI. Automatically cast the JSON response into your Pydantic `Invoice` models!*
 
-   *Challenge: Build the client using the endpoints you discovered in the Swagger UI. Automatically cast the JSON response into your Pydantic `Invoice` models!*
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> **Hints:**
+>
+> * Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL).
+> * Remember that because of our strict Pydantic model, initializing `Invoice` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
 
-   > **Hints:**
-   >
-   > * Use `requests.get()` to fetch the data (check the Swagger UI at `/docs` for the exact endpoint URL).
-   > * Remember that because of our strict Pydantic model, initializing `Invoice` might throw a `ValueError` if the math is corrupted! Wrap that line in a `try/except` block so you can log the error and `continue` to the next invoice.
+<details>
+<summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
 
-   <details>
-   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
+```python
+import requests
+from tenacity import retry, stop_after_attempt, wait_exponential
+from src.domain.models import Invoice
 
-   ```python
-   import requests
-   from tenacity import retry, stop_after_attempt, wait_exponential
-   from src.domain.models import Invoice
-   
-   class APIClient:
-       def fetch_pending_invoices(self) -> list[Invoice]:
-           # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
-           # TODO: Set a timeout (e.g., 10 seconds)
-           # TODO: Raise for status
-           # TODO: Loop through the JSON response and parse each item into an Invoice model
-           # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
-           pass
-   
-       # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
-       def approve_invoice(self, invoice_id: str) -> bool:
-           # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
-           # TODO: Set a timeout
-           # TODO: Raise for status
-           pass
-   ```
+class APIClient:
+    def fetch_pending_invoices(self) -> list[Invoice]:
+        # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
+        # TODO: Set a timeout (e.g., 10 seconds)
+        # TODO: Raise for status
+        # TODO: Loop through the JSON response and parse each item into an Invoice model
+        # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
+        pass
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+    # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
+    def approve_invoice(self, invoice_id: str) -> bool:
+        # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
+        # TODO: Set a timeout
+        # TODO: Raise for status
+        pass
+```
 
-   ```python
-   import requests
-   from tenacity import retry, stop_after_attempt, wait_exponential
-   from src.domain.models import Invoice
-   
-   class APIClient:
-       def fetch_pending_invoices(self) -> list[Invoice]:
-           # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
-           # TODO: Set a timeout (e.g., 10 seconds)
-           # TODO: Raise for status
-           # TODO: Loop through the JSON response and parse each item into an Invoice model
-           # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
-           pass
-   
-       # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
-       def approve_invoice(self, invoice_id: str) -> bool:
-           # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
-           # TODO: Set a timeout
-           # TODO: Raise for status
-           pass
-   ```
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-   </details>
-   </details>
-   </details>
+[to do: fix this and replace code beloe with the actual full solution snippet]
+```python
+import requests
+from tenacity import retry, stop_after_attempt, wait_exponential
+from src.domain.models import Invoice
 
-3. **Configure the ERP Mock Data (`tests/conftest.py`):**
+class APIClient:
+    def fetch_pending_invoices(self) -> list[Invoice]:
+        # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
+        # TODO: Set a timeout (e.g., 10 seconds)
+        # TODO: Raise for status
+        # TODO: Loop through the JSON response and parse each item into an Invoice model
+        # TODO: Wrap the parsing in a try/except ValueError to catch and skip corrupted invoices!
+        pass
 
-   *What are we doing?*
+    # TODO: Add the @retry decorator with exponential backoff (max 3 attempts)
+    def approve_invoice(self, invoice_id: str) -> bool:
+        # TODO: Make a POST request to http://127.0.0.1:8080/api/invoices/{invoice_id}/approve
+        # TODO: Set a timeout
+        # TODO: Raise for status
+        pass
+```
 
-   * We are creating a reusable Pytest fixture containing the raw JSON dictionary that the ERP system normally returns. Any test can now access this fake data!
+</details>
+</details>
+</details>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+#### Configure the ERP Mock Data (`tests/conftest.py`)
 
-   > **Hints:**
-    [to do: add hint]
+> *What are we doing?*
+>
+> * We are creating a reusable Pytest fixture containing the raw JSON dictionary that the ERP system normally returns. Any test can now access this fake data!
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   ```python
-   import pytest
-   
-   @pytest.fixture
-   def mock_erp_json():
-       return [{
-           "id": "INV-MOCK",
-           "vendor": "TestVendor",
-           "currency": "USD",
-           "line_items": [{"description": "Service", "amount": 100}],
-           "total_amount": 100
-       }]
-   ```
+> **Hints:**
+>
+> * Use the `@pytest.fixture` decorator above a function named `mock_erp_json`.
+> * Return a list containing a single dictionary representing an invoice payload (include fields like `id`, `vendor`, `currency`, `line_items`, and `total_amount`).
 
-   </details>
-   </details>
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-4. **Prove the Infrastructure Works (`tests/unit/test_api_client.py`):**
+```python
+import pytest
 
-   *What are we doing?*
+@pytest.fixture
+def mock_erp_json():
+    return [{
+        "id": "INV-MOCK",
+        "vendor": "TestVendor",
+        "currency": "USD",
+        "line_items": [{"description": "Service", "amount": 100}],
+        "total_amount": 100
+    }]
+```
 
-   * We write a Unit test. Notice how we inject `mock_erp_json` into the function, and use `@patch` to intercept `requests.get`. We tell the intercepted request to return our fake JSON instead of hitting the network!
+</details>
+</details>
 
-   *Challenge: Create a unit test labeled `@pytest.mark.unit`. Use `@patch` and your `mock_erp_json` fixture to assert that your client correctly parses the fake data into a Pydantic model.*
+#### Prove the Infrastructure Works (`tests/unit/test_api_client.py`)
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> *What are we doing?*
+>
+> * We write a Unit test. Notice how we inject `mock_erp_json` into the function, and use `@patch` to intercept `requests.get`. We tell the intercepted request to return our fake JSON instead of hitting the network!
 
-   > **Hints:**
-    [to do: add hint]
+**Challenge:** *Create a unit test labeled `@pytest.mark.unit`. Use `@patch` and your `mock_erp_json` fixture to assert that your client correctly parses the fake data into a Pydantic model.*
 
-   <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   ```python
-   import pytest
-   from unittest.mock import patch, Mock
-   from src.infrastructure.api_client import FastAPIClient
-   
-   @pytest.mark.unit
-   # @patch intercepts the requests.get function BEFORE it runs.
-   # It prevents the network call and passes a fake "mock_get" object into our test function.
-   @patch("src.infrastructure.api_client.requests.get")
-   def test_fetch_pending_invoices(mock_get, mock_erp_json):
-       # ARRANGE: Configure our fake network response
-       
-       # 1. Create a fake HTTP response object
-       mock_response = Mock()
-       
-       # 2. When our code calls response.json(), return the fake dictionary from conftest.py
-       mock_response.json.return_value = mock_erp_json
-       
-       # 3. Tell the intercepted requests.get to return our fake HTTP response
-       mock_get.return_value = mock_response
-       
-       # ACT: Run the client. 
-       # It thinks it is hitting the real network, but it is actually talking to our Mock!
-       client = FastAPIClient()
-       invoices = client.fetch_pending_invoices()
-       
-       # ASSERT: Did the client successfully parse the fake JSON into Pydantic models?
-       assert len(invoices) == 1
-       assert invoices[0].id == "INV-MOCK"
-       assert invoices[0].vendor == "TestVendor"
-   ```
+> **Hints:**
+>
+> * Use `@patch("src.infrastructure.api_client.requests.get")`.
+> * Create a `Mock()` object, set its `.json.return_value` to `mock_erp_json`, and assign it to `mock_get.return_value`.
 
-   </details>
-   </details>
+<details>
+<summary><b>💡 Click here to show the solution snippet</b></summary>
 
-5. **Run the Unit Test:**
+```python
+import pytest
+from unittest.mock import patch, Mock
+from src.infrastructure.api_client import APIClient
 
-   Execute the test to verify your mocking logic works perfectly.
+@pytest.mark.unit
+# @patch intercepts the requests.get function BEFORE it runs.
+# It prevents the network call and passes a fake "mock_get" object into our test function.
+@patch("src.infrastructure.api_client.requests.get")
+def test_fetch_pending_invoices(mock_get, mock_erp_json):
+    # ARRANGE: Configure our fake network response
+    
+    # 1. Create a fake HTTP response object
+    mock_response = Mock()
+    
+    # 2. When our code calls response.json(), return the fake dictionary from conftest.py
+    mock_response.json.return_value = mock_erp_json
+    
+    # 3. Tell the intercepted requests.get to return our fake HTTP response
+    mock_get.return_value = mock_response
+    
+    # ACT: Run the client. 
+    # It thinks it is hitting the real network, but it is actually talking to our Mock!
+    client = APIClient()
+    invoices = client.fetch_pending_invoices()
+    
+    # ASSERT: Did the client successfully parse the fake JSON into Pydantic models?
+    assert len(invoices) == 1
+    assert invoices[0].id == "INV-MOCK"
+    assert invoices[0].vendor == "TestVendor"
+```
 
-   ```bash
-   uv run pytest -m unit
-   ```
+</details>
+</details>
 
-6. **Test API Resilience (`tests/unit/test_api_client.py`):**
+#### Run the Unit Test
 
-   *What are we doing?*
+Execute the test to verify your mocking logic works perfectly.
 
-   * We are proving that if the ERP sends a corrupted invoice (e.g. bad math), our `APIClient` catches the `ValueError` from Pydantic and skips it instead of crashing.
+```bash
+uv run pytest -m unit
+```
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+#### Test API Resilience (`tests/unit/test_api_client.py`)
 
-   > **Hints:**
-    [to do: add hint]
+> *What are we doing?*
+>
+> * We are proving that if the ERP sends a corrupted invoice (e.g. bad math), our `APIClient` catches the `ValueError` from Pydantic and skips it instead of crashing.
 
-   <details>
-   <summary><b>💡 Click here to show the solution snippet</b></summary>
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   ```python
-   @pytest.mark.unit
-   @patch("src.infrastructure.api_client.requests.get")
-   def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
-       mock_response = Mock()
-       mock_response.json.return_value = [
-           {"id": "GOOD-1", "vendor": "A", "currency": "USD",
-            "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
-           {"id": "BAD-1", "vendor": "A", "currency": "USD",
-            "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
-       ]
-       mock_get.return_value = mock_response
-       invoices = FastAPIClient().fetch_pending_invoices()
-       assert [inv.id for inv in invoices] == ["GOOD-1"]
-   ```
+> **Hints:**
+>
+> * Similar to the previous test, but return a list with two invoice dictionaries: one with correct math and one with corrupted math.
+> * Assert that the client returns only a single valid invoice.
 
-   </details>
-   </details>
+<details>
+<summary><b>💡 Click here to show the solution snippet</b></summary>
 
-### 2.7. The Orchestrator (SOLID Principles in Action)
+```python
+@pytest.mark.unit
+@patch("src.infrastructure.api_client.requests.get")
+def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
+    mock_response = Mock()
+    mock_response.json.return_value = [
+        {"id": "GOOD-1", "vendor": "A", "currency": "USD",
+        "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
+        {"id": "BAD-1", "vendor": "A", "currency": "USD",
+        "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
+    ]
+    mock_get.return_value = mock_response
+    invoices = APIClient().fetch_pending_invoices()
+    assert [inv.id for inv in invoices] == ["GOOD-1"]
+```
+
+</details>
+</details>
+
+### The Orchestrator (SOLID Principles in Action)
 
 <details>
 <summary><b>📚 Click here to learn more about: SOLID Principles & Python Protocols</b></summary>
@@ -945,8 +981,7 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
 >     ```
 >
 >   * *Good (Loosely Coupled):* The Orchestrator asks for "something" that can fetch invoices, injected via the `__init__` constructor.
->
-> [to do: refine this and cover reamining principles]
+> * **(L) Liskov Substitution & Interface Segregation:** While less critical for this specific orchestrator, the remaining principles ensure our interfaces remain small and interchangeable. A mock API client used in tests should be perfectly substitutable for the real `APIClient` without the Orchestrator knowing the difference.
 >
 > **2. Python Protocols (Duck Typing)**
 >
@@ -973,100 +1008,100 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 In Sarah's email, she hinted that if this tool is successful, management might deploy it globally. This means next year, the bot might have to talk to SAP or Oracle instead of this custom ERP. By using Dependency Inversion and a `Protocol`, we can build an orchestrator that will survive that future migration without changing a single line of core business logic!
 
-1. **Create the Application Orchestrator (`src/application/processor.py`):**
+#### Create the Application Orchestrator (`src/application/processor.py`)
 
-   *What are we doing?*
+> *What are we doing?*
+>
+> * We define an `InvoiceAPIClient(Protocol)` interface.
+> * Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method.
+> * Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
 
-   * We define an `InvoiceAPIClient(Protocol)` interface.
-   * Then, we build the `InvoiceProcessor` orchestrator and inject the client via the `__init__` method.
-   * Finally, the `run()` method applies Sarah's final business rule: only approve invoices strictly under the $10,000 threshold.
+**Challenge:** *Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than importing the FastAPI client. Write a `run()` method that loops through the invoices and approves them.*
 
-   *Challenge: Create an `InvoiceProcessor`. Define an `InvoiceAPIClient(Protocol)` rather than importing the FastAPI client. Write a `run()` method that loops through the invoices and approves them.*
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> **Hints:**
+>
+> * Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it.
+> * Use an `if` statement to check if `total_amount > self.threshold`.
+> * Remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
 
-   > **Hints:**
-   >
-   > * Call `self.api_client.fetch_pending_invoices()` to get the list, then loop through it.
-   > * Use an `if` statement to check if `total_amount > self.threshold`.
-   > * Remember that network calls can fail—wrap `self.api_client.approve_invoice(inv.id)` in a `try/except Exception` block so a transient error doesn't crash your entire batch!
+<details>
+<summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
 
-   <details>
-   <summary><b>💡 Still stuck? Click here for a code scaffold</b></summary>
+```python
+import logging
+from src.domain.models import Invoice
+from typing import Protocol
 
-   ```python
-   import logging
-   from src.domain.models import Invoice
-   from typing import Protocol
-   
-   logger = logging.getLogger(__name__)
-   
-   # SOLID: Dependency Inversion. We don't care HOW the API works, just that it has these methods.
-   class InvoiceAPIClient(Protocol):
-       def fetch_pending_invoices(self) -> list[Invoice]: ...
-       def approve_invoice(self, invoice_id: str) -> bool: ...
-   
-   class InvoiceProcessor:
-       def __init__(self, api_client: InvoiceAPIClient):
-           self.api_client = api_client
-           self.threshold = 10000.0
-   
-       def run(self):
-           # TODO: Fetch pending invoices using self.api_client
-           # TODO: Loop through the invoices
-           # TODO: If the invoice total is > self.threshold, log a warning
-           # TODO: Otherwise, try to approve the invoice
-           # TODO: Wrap the approval in a try/except block so a failure doesn't crash the loop!
-           pass
-   ```
+logger = logging.getLogger(__name__)
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+# SOLID: Dependency Inversion. We don't care HOW the API works, just that it has these methods.
+class InvoiceAPIClient(Protocol):
+    def fetch_pending_invoices(self) -> list[Invoice]: ...
+    def approve_invoice(self, invoice_id: str) -> bool: ...
 
-   ```python
-   import logging
-   from src.domain.models import Invoice
-   from typing import Protocol
-   
-   logger = logging.get_logger()
-   
-   class InvoiceAPIClient(Protocol):
-       def fetch_pending_invoices(self) -> list[Invoice]: ...
-       def approve_invoice(self, invoice_id: str) -> bool: ...
-   
-   class InvoiceProcessor:
-       def __init__(self, api_client: InvoiceAPIClient):
-           self.api_client = api_client
-           self.threshold = 10000.0
-   
-       def run(self):
-           invoices = self.api_client.fetch_pending_invoices()
-           logger.info("fetched_invoices", count=len(invoices))
-   
-           for inv in invoices:
-               # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
-               # This makes tracking a single invoice through the system effortless in Azure/Datadog.
-               log = logger.bind(invoice_id=inv.id)
-               log.info("processing_invoice")
-   
-               if inv.total_amount > self.threshold:
-                   # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
-                   log.warning("manual_review_required", amount=inv.total_amount)
-               else:
-                   self.api_client.approve_invoice(inv.id)
-                   log.info("invoice_approved")
-   ```
+class InvoiceProcessor:
+    def __init__(self, api_client: InvoiceAPIClient):
+        self.api_client = api_client
+        self.threshold = 10000.0
 
-   </details>
-   </details>
-   </details>
+    def run(self):
+        # TODO: Fetch pending invoices using self.api_client
+        # TODO: Loop through the invoices
+        # TODO: If the invoice total is > self.threshold, log a warning
+        # TODO: Otherwise, try to approve the invoice
+        # TODO: Wrap the approval in a try/except block so a failure doesn't crash the loop!
+        pass
+```
 
-### 2.8. Integration Testing (No Network Required!)
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
+
+```python
+import logging
+from src.domain.models import Invoice
+from typing import Protocol
+
+logger = logging.get_logger()
+
+class InvoiceAPIClient(Protocol):
+    def fetch_pending_invoices(self) -> list[Invoice]: ...
+    def approve_invoice(self, invoice_id: str) -> bool: ...
+
+class InvoiceProcessor:
+    def __init__(self, api_client: InvoiceAPIClient):
+        self.api_client = api_client
+        self.threshold = 10000.0
+
+    def run(self):
+        invoices = self.api_client.fetch_pending_invoices()
+        logger.info("fetched_invoices", count=len(invoices))
+
+        for inv in invoices:
+            # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
+            # This makes tracking a single invoice through the system effortless in Azure/Datadog.
+            log = logger.bind(invoice_id=inv.id)
+            log.info("processing_invoice")
+
+            if inv.total_amount > self.threshold:
+                # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
+                log.warning("manual_review_required", amount=inv.total_amount)
+            else:
+                self.api_client.approve_invoice(inv.id)
+                log.info("invoice_approved")
+```
+
+</details>
+</details>
+</details>
+
+### Integration Testing (No Network Required!)
 
 <details>
 <summary><b>📚 Click here to learn more about: CUPID Principles & Integration Testing</b></summary>
@@ -1085,7 +1120,7 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 >
 > To build a reliable bot, we discuss all three layers (though this workshop only builds Unit and Integration tests):
 >
-> * **Unit Tests (Step 4 & 5):** We tested our Pydantic math in total isolation. We tested our `FastAPIClient` by mocking the `requests` library.
+> * **Unit Tests (Step 4 & 5):** We tested our Pydantic math in total isolation. We tested our `APIClient` by mocking the `requests` library.
 > * **Integration Tests (This Step):** Here, we test the **wiring** between our Application Orchestrator and our Domain models. Does the Orchestrator correctly apply the $10,000 threshold rule?
 > * **End-to-End (E2E) Tests (Next Step):** Does the entire script actually work when we hit the real ERP system?
 >
@@ -1095,102 +1130,108 @@ In Sarah's email, she hinted that if this tool is successful, management might d
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Because we engineered a clean DDD architecture, we can prove this instantly. We will build a Fake API client that feeds the Orchestrator a cheap invoice and an expensive invoice.
 
-1. **Create the Fake Client (`tests/conftest.py`):**
+#### Create the Fake Client (`tests/conftest.py`)
 
-   *What are we doing?*
+> *What are we doing?*
+>
+> * In Step 3, we learned that `conftest.py` is the home for reusable test fixtures. We are building a `FakeAPIClient` that implements our Protocol, but returns memory invoices instead of hitting the network.
+> * By making it a `@pytest.fixture`, any test in our project can instantly request it!
 
-   * In Step 3, we learned that `conftest.py` is the home for reusable test fixtures. We are building a `FakeAPIClient` that implements our Protocol, but returns memory invoices instead of hitting the network.
-   * By making it a `@pytest.fixture`, any test in our project can instantly request it!
+**Challenge:** *Open `tests/conftest.py`. Write a `FakeAPIClient` class with a `fetch_pending_invoices` method returning two fake invoices (one under $10,000, one over). Create a fixture function that returns an instance of it.*
 
-   *Challenge: Open `tests/conftest.py`. Write a `FakeAPIClient` class with a `fetch_pending_invoices` method returning two fake invoices (one under $10,000, one over). Create a fixture function that returns an instance of it.*
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> **Hints:**
+>
+> * Create an `Orchestrator` class that accepts `api_client` via its `__init__` method.
+> * Write a `run()` method that fetches invoices, checks if the amount is > 10000, and calls `approve_invoice()` for valid ones.
+> * Use `logging.info()` or `logging.warning()` to track the states.
 
-   > **Hints:**
-    [to do: add hints]
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+```python
+import pytest
+from src.domain.models import Invoice, LineItem
 
-   ```python
-   import pytest
-   from src.domain.models import Invoice, LineItem
+class FakeAPIClient:
+    def __init__(self):
+        self.approved_invoices = []
+        
+    def fetch_pending_invoices(self):
+        # We intentionally hardcode a cheap and an expensive invoice here
+        # so we can test that the Orchestrator applies the $10,000 rule correctly!
+        return [
+            Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
+            Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
+        ]
 
-   class FakeAPIClient:
-       def __init__(self):
-           self.approved_invoices = []
-           
-       def fetch_pending_invoices(self):
-           # We intentionally hardcode a cheap and an expensive invoice here
-           # so we can test that the Orchestrator applies the $10,000 rule correctly!
-           return [
-               Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
-               Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
-           ]
+    def approve_invoice(self, invoice_id: str):
+        self.approved_invoices.append(invoice_id)
+        return True
 
-       def approve_invoice(self, invoice_id: str):
-           self.approved_invoices.append(invoice_id)
-           return True
+@pytest.fixture
+def fake_api():
+    return FakeAPIClient()
+```
 
-   @pytest.fixture
-   def fake_api():
-       return FakeAPIClient()
-   ```
+</details>
+</details>
 
-   </details>
-   </details>
+#### Write the Integration Test (`tests/integration/test_processor.py`)
 
-2. **Write the Integration Test (`tests/integration/test_processor.py`):**
+> *What are we doing?*
+>
+> * Notice how we just ask Pytest for the `fake_api` fixture in the function arguments! We inject it into the Orchestrator, run it, and check the fake's internal list to prove it only approved the cheap invoice.
 
-   *What are we doing?*
+**Challenge:** *Create an integration test. Inject the `fake_api` fixture. Run the `InvoiceProcessor` and assert that "CHEAP-1" is approved and "EXPENSIVE-1" is not!*
 
-   * Notice how we just ask Pytest for the `fake_api` fixture in the function arguments! We inject it into the Orchestrator, run it, and check the fake's internal list to prove it only approved the cheap invoice.
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   *Challenge: Create an integration test. Inject the `fake_api` fixture. Run the `InvoiceProcessor` and assert that "CHEAP-1" is approved and "EXPENSIVE-1" is not!*
+> **Hints:**
+>
+> * Write a test function using `@patch` to mock your `api_client`.
+> * Create fake invoice instances to return when `fetch_pending_invoices` is called.
+> * Assert that `approve_invoice` is called the expected number of times based on the invoice amounts.
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-   > **Hints:**
-    [to do: add hints]
+```python
+import pytest
+from src.application.processor import InvoiceProcessor
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+@pytest.mark.integration
+def test_processor_approves_under_threshold_only(fake_api):
+    # Arrange: Inject the Fake infrastructure!
+    processor = InvoiceProcessor(api_client=fake_api)
+    
+    # Act
+    processor.run()
+    
+    # Assert
+    assert "CHEAP-1" in fake_api.approved_invoices
+    assert "EXPENSIVE-1" not in fake_api.approved_invoices
+```
 
-   ```python
-   import pytest
-   from src.application.processor import InvoiceProcessor
-   
-   @pytest.mark.integration
-   def test_processor_approves_under_threshold_only(fake_api):
-       # Arrange: Inject the Fake infrastructure!
-       processor = InvoiceProcessor(api_client=fake_api)
-       
-       # Act
-       processor.run()
-       
-       # Assert
-       assert "CHEAP-1" in fake_api.approved_invoices
-       assert "EXPENSIVE-1" not in fake_api.approved_invoices
-   ```
+</details>
+</details>
 
-   </details>
-   </details>
+#### Run the Integration Test
 
-3. **Run the Integration Test:**
+Execute the test to verify your Orchestrator logic works perfectly.
 
-   Execute the test to verify your Orchestrator logic works perfectly.
+```bash
+uv run pytest -m integration
+```
 
-   ```bash
-   uv run pytest -m integration
-   ```
-
-### 2.9. The Entry Point (Running the Bot)
+### The Entry Point (Running the Bot)
 
 <details>
 <summary><b>📚 Click here to learn more about: Lightweight Entry Points & Integration</b></summary>
@@ -1213,69 +1254,71 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
 
 </details>
 
-**🔨 Implementation Steps:**
+---
 
 The architecture is complete, and we are finally ready to process Sarah's real invoices against the live (mock) ERP system!
 
-1. **Create `task.py` in the root directory:**
+#### Create `task.py` in the root directory
 
-   *What are we doing?*
+> *What are we doing?*
+>
+> * We are creating the execution script.
+> * We import our real infrastructure (`APIClient`), inject it into our Orchestrator (`InvoiceProcessor`), and run the process.
 
-   * We are creating the execution script.
-   * We import our real infrastructure (`APIClient`), inject it into our Orchestrator (`InvoiceProcessor`), and run the process.
+Notice how clean and readable this file is!
 
-   Notice how clean and readable this file is!
+**Challenge:** *Create the main execution file. Import the real `APIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
 
-   *Challenge: Create the main execution file. Import the real `APIClient` and the `InvoiceProcessor`. Instantiate the client, pass it into the processor, and call `run()`!*
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+> **Hints:**
+>
+> * Configure basic `logging` at the top of your file.
+> * Instantiate your `APIClient` and pass it to the `Orchestrator`, then call the orchestrator's `run()` method inside a `main()` block.
 
-   > **Hints:**
-    [to do: add hints]
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+```python
+import logging
+from src.infrastructure.api_client import APIClient
+from src.application.processor import InvoiceProcessor
 
-   ```python
-   import logging
-   from src.infrastructure.api_client import APIClient
-   from src.application.processor import InvoiceProcessor
-   
-   # Configure basic logging so we can see the output in the terminal
-   logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-   
-   def main():
-       print("Starting Invoice Processing Bot...")
-   
-       # 1. Initialize the real Infrastructure client (Connecting to the outside world!)
-       api_client = APIClient()
-   
-       # 2. Inject the real client into the Application Orchestrator (Dependency Injection)
-       processor = InvoiceProcessor(api_client=api_client)
-   
-       # 3. Execute the core business logic flow
-       processor.run()
-   
-       print("Processing Complete!")
-   
-   # Standard Python idiom to ensure this only runs when executed directly
-   if __name__ == "__main__":
-       main()
-   ```
+# Configure basic logging so we can see the output in the terminal
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-   </details>
-   </details>
+def main():
+    print("Starting Invoice Processing Bot...")
 
-2. **Execute your completed bot (End-to-End Test):**
+    # 1. Initialize the real Infrastructure client (Connecting to the outside world!)
+    api_client = APIClient()
 
-   Run the process using `uv` to ensure it executes inside your isolated virtual environment. This proves the entire system works from end to end!
+    # 2. Inject the real client into the Application Orchestrator (Dependency Injection)
+    processor = InvoiceProcessor(api_client=api_client)
 
-   ```bash
-   uv run task.py
-   ```
+    # 3. Execute the core business logic flow
+    processor.run()
 
-### 2.10. Observability & Enterprise Deployment
+    print("Processing Complete!")
+
+# Standard Python idiom to ensure this only runs when executed directly
+if __name__ == "__main__":
+    main()
+```
+
+</details>
+</details>
+
+#### Execute your completed bot (End-to-End Test)
+
+Run the process using `uv` to ensure it executes inside your isolated virtual environment. This proves the entire system works from end to end!
+
+```bash
+uv run task.py
+```
+
+### Observability & Enterprise Deployment
 
 <details>
 <summary><b>📚 Click here to learn more about: Structured Logs & Azure Architecture</b></summary>
@@ -1303,7 +1346,7 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 > * **WARNING:** Expected edge cases that require human intervention (e.g., `manual_review_required`).
 > * **ERROR:** Unexpected system crashes (e.g., `erp_database_timeout`).
 >
-> [to do: analyze and extend this section; how can we distinct business logic errors, technical erros, manual abort in logs but also in Python exceptions? should we create our own exceptions?]
+> To separate issues, we should define Custom Domain Exceptions (e.g., `class MathValidationError(ValueError): pass`). This allows our orchestrator to catch `MathValidationError` (a business error we can log and skip) differently from a `requests.exceptions.ConnectionError` (a technical error where we should probably abort and alert IT).
 >
 > **5. Enterprise Deployment (Azure Architecture)**
 >
@@ -1328,132 +1371,138 @@ The architecture is complete, and we are finally ready to process Sarah's real i
 
 </details>
 
-[to do: add explanation why we implemented logging (bad pracice) and now changing that; it's because we wanted to show standard logging and focus on differnt topics and now apply the good practice]
+*Note: You might wonder why we initially used standard `logging` in Step 6 only to replace it now. Standard logging is universally understood, and we wanted to focus purely on Orchestration logic first. Now that our core logic works, we are upgrading to `structlog` to demonstrate enterprise observability best practices.*
 
-**🔨 Implementation Steps:**
+---
 
 Sarah loves the bot, but audit season is approaching. She needs a perfectly queryable audit trail showing exactly *why* every invoice was approved or rejected. The legacy `log.html` won't cut it. We are going to implement enterprise-grade Structured JSON logging.
 
-1. **Add the modern logging library:**
+#### Add the modern logging library
 
-   *What are we doing?*
+> *What are we doing?*
+>
+> * We are installing `structlog`, the industry standard for structured Python logging.
 
-   * We are installing `structlog`, the industry standard for structured Python logging.
+```bash
+uv add structlog
+```
 
-   ```bash
-   uv add structlog
-   ```
+#### Refactor your Orchestrator (`src/application/processor.py`)
 
-2. **Refactor your Orchestrator (`src/application/processor.py`):**
-
-   *What are we doing?*
-
-   * We replace standard `logging` with `structlog`.
-   * Inside the processing loop, we create a bound logger (`log = logger.bind(...)`). Now, every time we log `manual_review_required` or `invoice_approved`, the Invoice ID and Amount are captured in the JSON payload!
+> *What are we doing?*
+>
+> * We replace standard `logging` with `structlog`.
+> * Inside the processing loop, we create a bound logger (`log = logger.bind(...)`). Now, every time we log `manual_review_required` or `invoice_approved`, the Invoice ID and Amount are captured in the JSON payload!
   
-   *Challenge: Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context!*
+**Challenge:** *Replace the standard `logging` with `structlog`. Notice how we `bind()` variables like `invoice_id` to the logger so every log line automatically includes that context!*
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   > **Hints:**
-    [to do: add hints]
+> **Hints:**
+>
+> * Import `structlog`.
+> * Remove the standard `logging` setup.
+> * Initialize a logger with `log = structlog.get_logger()`.
+> * Inside your loop, use `log.bind(invoice_id=inv.id, amount=inv.total_amount)` to create a context-aware logger that automatically includes these fields in every log message it emits.
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
 
-   ```python
-   import structlog
-   from src.domain.models import Invoice
-   from typing import Protocol
-   
-   logger = structlog.get_logger()
-   
-   class InvoiceAPIClient(Protocol):
-       def fetch_pending_invoices(self) -> list[Invoice]: ...
-       def approve_invoice(self, invoice_id: str) -> bool: ...
-   
-   class InvoiceProcessor:
-       def __init__(self, api_client: InvoiceAPIClient):
-           self.api_client = api_client
-           self.threshold = 10000.0
-   
-       def run(self):
-           invoices = self.api_client.fetch_pending_invoices()
-           logger.info("fetched_invoices", count=len(invoices))
-   
-           for inv in invoices:
-               # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
-               # This makes tracking a single invoice through the system effortless in Azure/Datadog.
-               log = logger.bind(invoice_id=inv.id)
-               log.info("processing_invoice")
-   
-               if inv.total_amount > self.threshold:
-                   # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
-                   log.warning("manual_review_required", amount=inv.total_amount)
-               else:
-                   self.api_client.approve_invoice(inv.id)
-                   log.info("invoice_approved")
-   ```
+```python
+import structlog
+from src.domain.models import Invoice
+from typing import Protocol
 
-   </details>
-   </details>
+logger = structlog.get_logger()
 
-3. **Update your Entry Point (`task.py`):**
+class InvoiceAPIClient(Protocol):
+    def fetch_pending_invoices(self) -> list[Invoice]: ...
+    def approve_invoice(self, invoice_id: str) -> bool: ...
 
-   *What are we doing?* 
+class InvoiceProcessor:
+    def __init__(self, api_client: InvoiceAPIClient):
+        self.api_client = api_client
+        self.threshold = 10000.0
 
-   * We tell `structlog` to render all log events as JSON strings, and inject an ISO-8601 timestamp into every payload automatically.
+    def run(self):
+        invoices = self.api_client.fetch_pending_invoices()
+        logger.info("fetched_invoices", count=len(invoices))
 
-   *Challenge: Configure `structlog` to output as JSON with an ISO timestamp.*
+        for inv in invoices:
+            # BEST PRACTICE: Bind the ID to the logger so it attaches to all subsequent logs!
+            # This makes tracking a single invoice through the system effortless in Azure/Datadog.
+            log = logger.bind(invoice_id=inv.id)
+            log.info("processing_invoice")
 
-   <details>
-   <summary><b>💡 Click here for hints</b></summary>
+            if inv.total_amount > self.threshold:
+                # BEST PRACTICE: Use Warning for expected business exceptions (needs human review)
+                log.warning("manual_review_required", amount=inv.total_amount)
+            else:
+                self.api_client.approve_invoice(inv.id)
+                log.info("invoice_approved")
+```
 
-   > **Hints:**
-    [to do: add hints]
+</details>
+</details>
 
-   <details>
-   <summary><b>💡 Click here to show the full solution snippet</b></summary>
+#### Update your Entry Point (`task.py`)
 
-   ```python
-   import structlog
-   from src.infrastructure.api_client import FastAPIClient
-   from src.application.processor import InvoiceProcessor
-   
-   def main():
-       # Configure the 12-Factor JSON log stream
-       structlog.configure(
-           processors=[
-               structlog.processors.TimeStamper(fmt="iso"),
-               structlog.processors.JSONRenderer()
-           ]
-       )
-   
-       logger = structlog.get_logger()
-       logger.info("bot_starting")
-   
-       # Wire everything up and run!
-       api_client = FastAPIClient()
-       processor = InvoiceProcessor(api_client=api_client)
-       processor.run()
-   
-       logger.info("bot_finished")
-   
-   if __name__ == "__main__":
-       main()
-   ```
+> *What are we doing?*
+>
+> * We tell `structlog` to render all log events as JSON strings, and inject an ISO-8601 timestamp into every payload automatically.
 
-   </details>
-   </details>
+**Challenge:** *Configure `structlog` to output as JSON with an ISO timestamp.*
 
-4. **Run the bot:**
+<details>
+<summary><b>💡 Click here for hints</b></summary>
 
-   Execute the bot. Look at your terminal! You will see machine-readable JSON logs that cloud dashboards (Azure, Datadog, Splunk) can natively parse and query.
+> **Hints:**
+>
+> * Use `structlog.configure()` to set the processors.
+> * You will need `structlog.processors.TimeStamper(fmt="iso")` to add the timestamp, and `structlog.processors.JSONRenderer()` to format the final output as a JSON string.
 
-   ```bash
-   uv run task.py
-   ```
+<details>
+<summary><b>💡 Click here to show the full solution snippet</b></summary>
+
+```python
+import structlog
+from src.infrastructure.api_client import FastAPIClient
+from src.application.processor import InvoiceProcessor
+
+def main():
+    # Configure the 12-Factor JSON log stream
+    structlog.configure(
+        processors=[
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer()
+        ]
+    )
+
+    logger = structlog.get_logger()
+    logger.info("bot_starting")
+
+    # Wire everything up and run!
+    api_client = FastAPIClient()
+    processor = InvoiceProcessor(api_client=api_client)
+    processor.run()
+
+    logger.info("bot_finished")
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
+</details>
+
+#### Run the bot
+
+Execute the bot. Look at your terminal! You will see machine-readable JSON logs that cloud dashboards (Azure, Datadog, Splunk) can natively parse and query.
+
+```bash
+uv run task.py
+```
 
 ---
 
