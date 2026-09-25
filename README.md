@@ -195,7 +195,7 @@ With our architecture mapped out on the whiteboard, it is time to lay the techni
 > 
 > **4. The Industry Standard Toolchain**
 > Our pre-commit pipeline executes in a specific "Fail-Fast" order using the best tools available in the Python ecosystem:
-> * **TruffleHog:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
+> * **Gitleaks:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
 > * **Ruff (`check --fix` and `format`):** Built in Rust, Ruff is 10-100x faster than legacy tools like `flake8` and `black`. It automatically fixes syntax errors, removes unused imports, and enforces strict, uniform code formatting.
 > * **Bandit:** A static application security testing (SAST) tool designed to find common security issues in Python code (e.g., using `eval()` or weak cryptographic hashes).
 > * **Pyrefly:** An advanced static analysis tool that detects "code smells" and suggests modern Python refactoring patterns.
