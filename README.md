@@ -534,22 +534,6 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 
 3. **Run the Defense Test:** 
    Execute the unit test to verify your math validator works perfectly.
-   
-   ```python
-   @pytest.mark.unit
-   @patch("src.infrastructure.api_client.requests.get")
-   def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
-       mock_response = Mock()
-       mock_response.json.return_value = [
-           {"id": "GOOD-1", "vendor": "A", "currency": "USD",
-            "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
-           {"id": "BAD-1", "vendor": "A", "currency": "USD",
-            "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
-       ]
-       mock_get.return_value = mock_response
-       invoices = FastAPIClient().fetch_pending_invoices()
-       assert [inv.id for inv in invoices] == ["GOOD-1"]
-   ```
 
    ```bash
    uv run pytest -m unit
@@ -750,6 +734,30 @@ Sarah's primary complaint was that the ERP system randomly throws `503 Service U
    ```bash
    uv run pytest -m unit
    ```
+
+6. **Test API Resilience (`tests/unit/test_api_client.py`):**
+   *What are we doing?* We are proving that if the ERP sends a corrupted invoice (e.g. bad math), our `FastAPIClient` catches the `ValueError` from Pydantic and skips it instead of crashing.
+   
+   <details>
+   <summary><b>💡 Click here to show the solution snippet</b></summary>
+   
+   ```python
+   @pytest.mark.unit
+   @patch("src.infrastructure.api_client.requests.get")
+   def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
+       mock_response = Mock()
+       mock_response.json.return_value = [
+           {"id": "GOOD-1", "vendor": "A", "currency": "USD",
+            "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
+           {"id": "BAD-1", "vendor": "A", "currency": "USD",
+            "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
+       ]
+       mock_get.return_value = mock_response
+       invoices = FastAPIClient().fetch_pending_invoices()
+       assert [inv.id for inv in invoices] == ["GOOD-1"]
+   ```
+   
+   </details>
 
 ### Step 6: The Orchestrator (SOLID Principles in Action)
 
