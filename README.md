@@ -56,20 +56,19 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 
 *Here is how Sarah's team currently processes invoices manually:*
 
-[todo: replace the Windows Calculator (step 6) with Excel operations to add formula and sum up all items to validate the Total Amount and check which invoices require an approval. Add step to go back to the website and click the green "approve" button for those that have correct Total Amount and do not need approvals. ]
-
 1. Open the Google Chrome browser and navigate to the ERP portal.
 2. Type in the username and password to log in.
 3. Click on the `Finance Dashboard` tab.
 4. Click on `Pending Vendor Invoices` to load the grid.
 5. Click `Export` and select Excel spreadsheet as a format. Save the document on your computer. *Do not close the browser*
-6. For each invoice in the list:
-   * Open the Windows Calculator app *(Note: This step is deliberately exaggerated for teaching purposes)*.
-   * Add up every single line item on the screen manually.
-   * Check if the calculator total matches the "Total Amount" on the screen (If it doesn't, skip it).
-   * Check if the Total Amount is greater than $10,000 (If it is, skip it so the manager can review it). *(Note: A real AP control set would also include PO three-way match and vendor whitelisting)*
-   * If the math is correct and it is under $10,000, click the green "Approve" button.
-7. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
+6. Open the downloaded Excel spreadsheet.
+7. For each invoice in the spreadsheet:
+   * Add an Excel formula (`=SUM(...)`) to calculate the sum of all line items for that invoice.
+   * Compare the calculated sum to the "Total Amount" listed (if it doesn't match, highlight it in red and skip it).
+   * Check if the Total Amount is greater than $10,000 (if it is, skip it so the manager can review it). *(Note: A real AP control set would also include PO three-way match and vendor whitelisting)*
+8. Switch back to the open Google Chrome browser.
+9. For each valid invoice identified in the spreadsheet (correct math and under $10,000), locate it in the portal grid and click the green "Approve" button.
+10. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
 
 ---
 
@@ -77,11 +76,9 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 
 Sarah's manual process is slow, error-prone, and mind-numbing. No suprise she wants to automate it! 
 
-[todo: instead of telling what we wil build before we even finished analysing the problem, let's build narration and inform what we will do next (analyse the process, then build the solution)]
+However, before we rush into writing code or building the screen-scraping macro she asked for, a true Automation Engineer takes a step back. We must first rigorously analyze the core business problem she is trying to solve, ignoring the specific technical solution she suggested. Only after we have mapped out the logic, the rules, and the failure points will we begin architecting a resilient, enterprise-grade solution from scratch.
 
-We are not going to build the fragile screen-scraping macro she asked for. Instead, we are going to build an enterprise-grade, API-driven Python backend that operates invisibly and never breaks when the UI changes.
-
-It is time to put on your Automation Engineer hat and build this solution from scratch.
+Let's put on our Automation Engineer hats and start breaking this down.
 
 > Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). 
 
@@ -89,24 +86,35 @@ It is time to put on your Automation Engineer hat and build this solution from s
 
 <details>
 <summary style="cursor: pointer;"><b>📚 Click here to learn more about: Business Analysis & Domain-Driven Design</b></summary>
-[todo: update this part; add missing parts of DDD basics based on this article: https://medium.com/@code.chandrashekhar/domain-driven-design-ddd-a-complete-deep-dive-7932dff1f613]
-> **1. Understand the Business Domain**
+> **1. Understand the Business Domain & Subdomains**
 >
-> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). 
-> As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions?
+> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions? We often break a large domain into *Subdomains* (Core, Supporting, and Generic) to focus our efforts on what truly provides business value.
 >
 > **2. Establish a Ubiquitous Language**
 >
-> Important rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared vocabulary between developers and business experts. 
-> If the business talks about `Invoices`, `Line Items`, and `Approval Thresholds`, those exact terms must become the core components (models) in our code.
+> An important rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared, strict vocabulary used consistently by both developers and domain experts. If the business talks about `Invoices`, `Line Items`, and `Approval Thresholds`, those exact terms must become the core classes and variables in our code. No translating terms between business and engineering.
 >
-> **3. Define Bounded Contexts & Entities**
+> **3. Define Bounded Contexts**
 >
-> We must isolate our specific area of responsibility from the chaotic nature of the real life process. This isolated area of responsibility is called the **Bounded Context**. 
-> Inside this context, we define our **Entities** - objects with a distinct identity, like an `Invoice`, and **Value Objects** - attributes without an identity, like a `Line Item amount`. 
-> [todo: add Aggregates and Repository]
+> A Bounded Context is a strict boundary within which a particular domain model is defined and applicable. The concept of an "Invoice" might mean something completely different to the Accounting team compared to the Shipping team. The Bounded Context ensures our Ubiquitous Language remains unambiguous within our specific area of responsibility.
 >
-> **4. Hexagonal Architecture (Ports and Adapters)**
+> **4. Entities and Value Objects**
+>
+> Inside our Bounded Context, we model the world using two primary building blocks:
+> * **Entities**: Objects with a distinct, persistent identity that thread through time (e.g., an `Invoice` with a unique ID).
+> * **Value Objects**: Immutable attributes defined only by their properties, without an identity (e.g., a `MonetaryAmount` or a `LineItem` where if two have the same values, they are entirely interchangeable).
+>
+> **5. Aggregates and Aggregate Roots**
+>
+> * **Aggregates**: A cluster of domain objects (Entities and Value Objects) that are treated as a single unit for data changes. They guarantee the consistency of changes. 
+> * **Aggregate Root**: The only Entity within the Aggregate that outside objects are allowed to hold references to. For example, you wouldn't modify an `Invoice Line Item` directly; you would ask the `Invoice` (the Aggregate Root) to add or remove it, ensuring the `Total Amount` stays perfectly in sync.
+>
+> **6. Repositories and Domain Services**
+>
+> * **Repositories**: Abstractions that handle the retrieval and storage of Aggregates. To the domain logic, a Repository looks like an in-memory collection of objects, completely hiding whether the data actually lives in a SQL database, a REST API, or a flat file.
+> * **Domain Services**: Stateless operations or business rules that don't naturally fit inside a single Entity or Value Object (e.g., an `InvoiceApprovalService` that orchestrates rules across multiple aggregates).
+>
+> **7. Hexagonal Architecture (Ports and Adapters)**
 >
 > DDD separates the core business rules from the technical implementation. 
 > The mathematical validation of an Invoice does not care if the data came from a REST API or a database. 
@@ -133,31 +141,30 @@ To understand what we are replacing, we first need to visualize Sarah's **As-Is 
 
 Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
 
-[todo: verify and update if needed the mermaid diabram of the as-is workflow]
-
    ```mermaid
    flowchart LR
        A((Start)) --> B(Log into ERP Portal)
        B --> C(Navigate to Pending Invoices)
-       C --> D{Invoices Remain?}
-       D -- Yes --> E(Calculate Sum of Line Items)
-       E --> F{Sum == Total?}
-       F -- No --> G(Skip Invoice - Corrupted Data)
-       F -- Yes --> H{Total < $10k?}
-       H -- No --> I(Skip for Manual Review)
-       H -- Yes --> J(Click Approve)
-       G --> D
-       I --> D
-       J --> D
-       D -- No --> K((End))
+       C --> D(Export to Excel)
+       D --> E{Invoices Remain?}
+       E -- Yes --> F(Calculate Sum of Line Items)
+       F --> G{Sum == Total?}
+       G -- No --> H(Highlight Red - Skip)
+       G -- Yes --> I{Total < $10k?}
+       I -- No --> J(Skip for Manual Review)
+       I -- Yes --> K(Locate in Portal & Approve)
+       H --> E
+       J --> E
+       K --> E
+       E -- No --> L((End))
    ```
 
 ##### Risks
 
-[todo: analyze if we need to add learning section here to tackle risks analysis in the context of DDD; you can say no if this is not required or already covered above]
-
-In Domain-Driven Design, we categorize risks to figure out *where* our code should handle them. **Domain Risks** relate to the core business logic—such as Sarah mentioning the upstream vendor system glitching and sending corrupt invoice math. These must be caught by our core validation rules. **Infrastructure Risks** deal with the chaotic outside world—like the ERP portal crashing with 503 errors. These must be handled at the absolute boundary of our application using resilient network strategies.
-[todo: are there any other risks categories in DDD? is our categorization valid?]
+In Domain-Driven Design, we categorize risks to figure out *where* our code should handle them. Our categorization is a practical extension of DDD principles:
+* **Domain Risks** relate to the core business logic—such as Sarah mentioning the upstream vendor system glitching and sending corrupt invoice math. These must be caught by our core validation rules inside the Domain Entities. 
+* **Infrastructure Risks** deal with the chaotic outside world—like the ERP portal crashing with 503 errors. These must be handled at the absolute boundary of our application (the Infrastructure Adapters) using resilient network strategies like retries.
+* **Application Risks** (Orchestration Risks) relate to the workflow failing mid-process, such as a server restarting while processing an invoice. These are handled in the Application Services layer using transactions, idempotency, or queues.
 
 | ID | Type | Risk | Mitigation |
 | :- | :--- | :--- | :--------- |
@@ -170,7 +177,7 @@ Based on Sarah's email, our Domain models must explicitly represent an `Invoice`
 
 In addition to the `Invoice` and `LineItem`, we also define `Vendor` and `Currency` as important attributes of the domain. It's crucial that our internal Python attributes (e.g., `total_amount`) exactly map to the business vocabulary, avoiding generic or misleading terms.
 
-[todo: what about the approval threshold? is this also part of ubiquitous language?]
+Additionally, the **"Approval Threshold"** is a critical part of the Ubiquitous Language. It is not just a random `10000` integer hardcoded in a script; it is a formal Domain concept that dictates whether an invoice is eligible for Auto-Approval or requires Manual Review. We will model this explicitly.
 
 #### Map the Architecture Layers
 
@@ -180,7 +187,7 @@ If Sarah's Finance team decides to switch from this specific ERP system to SAP n
 
 | Layer | Description |
 | :---- | :---------- |
-| **Infrastructure** | This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops. [todo: include what it will be in the context of our project]|
+| **Infrastructure** | This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops. In our project, this will be an API Client that uses `requests` and `tenacity` to securely interact with the ERP Portal's REST API, protecting the rest of the application from 503 errors and network timeouts. |
 | **Domain** | This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules. |
 | **Application** | This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices. |
 
@@ -192,19 +199,36 @@ Notice how this new diagram maps directly to our layered architecture: fetching 
 
 Instead of opening Chrome and calculating math, our API-driven Python backend will invisibly and reliably execute the following flow:
 
-[todo: verify if the diagram is up to date and maps directly to our layered architecture]
-
    ```mermaid
    flowchart LR
-       Start((Process Triggered)) --> Fetch(Fetch Pending Invoices)
-       Fetch --> Loop{Invoices Remain?}
-       Loop -- Yes --> Validate{Is Math Valid?}
-       Loop -- No --> End((Process Complete))
-       Validate -- No --> Reject(Reject as Corrupted)
-       Validate -- Yes --> CheckAmount{Amount > $10k?}
-       CheckAmount -- Yes --> Manual(Flag for Manual Review)
-       CheckAmount -- No --> Approve(Auto-Approve Invoice)
-       Reject --> Next(Next Invoice)
+       subgraph Application [Application Layer - Orchestrator]
+           Start((Process Triggered))
+           Loop{Invoices Remain?}
+           Next(Next Invoice)
+           End((Process Complete))
+       end
+       
+       subgraph Infrastructure [Infrastructure Layer - Adapters]
+           Fetch(Fetch Pending Invoices via API)
+           Approve(Auto-Approve via API)
+       end
+       
+       subgraph Domain [Domain Layer - Core Rules]
+           Validate{Is Math Valid?}
+           CheckAmount{Amount < $10k?}
+           Reject(Reject as Corrupted)
+           Manual(Flag for Manual Review)
+       end
+
+       Start --> Fetch
+       Fetch --> Loop
+       Loop -- Yes --> Validate
+       Loop -- No --> End
+       Validate -- No --> Reject
+       Validate -- Yes --> CheckAmount
+       CheckAmount -- No --> Manual
+       CheckAmount -- Yes --> Approve
+       Reject --> Next
        Manual --> Next
        Approve --> Next
        Next --> Loop
