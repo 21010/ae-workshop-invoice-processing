@@ -1,22 +1,28 @@
 # Guided Automation Project: Invoice Processing
 
-Imagine being handed a broken, fragile legacy script that crashes every time a website button moves, leaving the Finance team frustrated and drowning in paperwork. That’s the reality for many automation developers today. But not for you.
+Welcome to the hands-on guided project! 
 
-Welcome to the hands-on guided project! In this session, you will evolve from traditional RPA script writing to **Automation Engineering**. You won't be building a screen-scraping bot that mimics human clicks. Instead, you'll learn to architect an enterprise-grade, headless Python backend. By the end of this journey, you will have built a resilient, API-driven solution that validates data mathematically, survives network crashes autonomously, and protects itself from insecure code—delivering a bulletproof solution that the Finance team can truly depend on.
+In this session, you will evolve from traditional RPA script writing to **Automation Engineering**. You won't be building a screen-scraping bot that mimics human clicks. Instead, you'll learn to architect an enterprise-grade, headless Python backend. 
+
+By the end of this journey, you will have built a resilient, API-driven solution that validates data mathematically, survives network crashes autonomously, and protects itself from insecure code—delivering a bulletproof solution that the Finance team can truly depend on.
 
 ## Prerequisite: Get Your Own Copy of this Repository
 
 | :warning: Before you start writing code, you need your own copy of this project so you can save your work and earn your certificate! |
 | ------------------------------------------------------------------------------------------------------------------------------------ |
 
-[![Fork Repository](https://img.shields.io/badge/Click_Here_To_Fork_This_Repository-black?style=for-the-badge&logo=github)](https://github.com/21010/ae-workshop-invoice-processing/fork)
+1. Click the **Fork This Repository** button below to create a copy in your personal GitHub account.
 
-1. Click the **Fork** button above to create a copy in your personal GitHub account.
+    <a target="_blank" rel="noopener noreferrer" href="https://github.com/21010/ae-workshop-invoice-processing/fork" style="padding: 0.5em; background: #e6eaef; border-radius: .375em; color: #111;" onMouseOver="this.style.background='#D4D6D9'" onMouseOut="this.style.background='#e6eaef'">
+        <svg data-component="Octicon" aria-hidden="true" focusable="false" class="octicon octicon-repo-forked" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"></path></svg>
+        <span>Fork</span>
+    </a>
+
 2. Navigate to *your* new repository.
-3. Click the green **`<> Code`** button on your repository, switch to the **Codespaces** tab, and click **Create codespace on main**. *(Do not create a Codespace on the original repository!)*
-4. When you finish the masterclass and push your code, GitHub Actions will automatically grade your work and award a certificate directly to your repository!
+3. Click the green <span style="background:#1f883d; color: #fff; padding: 0.5em; border-radius: .375em; text-wrap:nowrap;">< >  Code ▾</span> button **on your repository**, switch to the **Codespaces** tab, and click <span style="background:#1f883d; color: #fff; padding: 0.5em; border-radius: .375em; text-wrap:nowrap;">Create codespace on main</span>. *(Do not create a Codespace on the original repository!)*
+4. You are all set! Now you can safely commit your progress!
 
-## The Business Request (From the Finance Team)
+## The Business Request
 
 *You have just received the following email from Sarah in the Finance Department:*
 
@@ -50,64 +56,84 @@ Sarah described her problem using a specific, fragile technical solution (a UI-c
 
 *Here is how Sarah's team currently processes invoices manually:*
 
-1. Open the Google Chrome browser and navigate to the internal ERP portal.
+[todo: replace the Windows Calculator (step 6) with Excel operations to add formula and sum up all items to validate the Total Amount and check which invoices require an approval. Add step to go back to the website and click the green "approve" button for those that have correct Total Amount and do not need approvals. ]
+
+1. Open the Google Chrome browser and navigate to the ERP portal.
 2. Type in the username and password to log in.
-3. Click on the "Finance Dashboard" tab.
-4. Click on "Pending Vendor Invoices" to load the grid.
-5. For each invoice in the list:
+3. Click on the `Finance Dashboard` tab.
+4. Click on `Pending Vendor Invoices` to load the grid.
+5. Click `Export` and select Excel spreadsheet as a format. Save the document on your computer. *Do not close the browser*
+6. For each invoice in the list:
    * Open the Windows Calculator app *(Note: This step is deliberately exaggerated for teaching purposes)*.
    * Add up every single line item on the screen manually.
    * Check if the calculator total matches the "Total Amount" on the screen (If it doesn't, skip it).
    * Check if the Total Amount is greater than $10,000 (If it is, skip it so the manager can review it). *(Note: A real AP control set would also include PO three-way match and vendor whitelisting)*
    * If the math is correct and it is under $10,000, click the green "Approve" button.
-6. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
+7. If the website crashes with a 503 error, hit F5 to refresh, log in again, and find where they left off.
 
 ---
 
-## Engineering the Solution (Step-by-Step)
+## Engineering the Solution
 
-Sarah's manual process is slow, error-prone, and mind-numbing. We are not going to build the fragile screen-scraping macro she asked for. Instead, we are going to build an enterprise-grade, API-driven Python backend that operates invisibly and never breaks when the UI changes.
+Sarah's manual process is slow, error-prone, and mind-numbing. No suprise she wants to automate it! 
 
-Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). It is time to put on your Automation Engineer hat and build this solution from scratch.
+[todo: instead of telling what we wil build before we even finished analysing the problem, let's build narration and inform what we will do next (analyse the process, then build the solution)]
+
+We are not going to build the fragile screen-scraping macro she asked for. Instead, we are going to build an enterprise-grade, API-driven Python backend that operates invisibly and never breaks when the UI changes.
+
+It is time to put on your Automation Engineer hat and build this solution from scratch.
+
+> Your workspace is completely empty (except for this guide and a ERP API running silently in the background on `http://127.0.0.1:8080`). 
 
 ### Process Analysis & Architecture Design
 
 <details>
-<summary><b>📚 Click here to learn more about: Business Analysis & Domain-Driven Design</b></summary>
-
+<summary style="cursor: pointer;"><b>📚 Click here to learn more about: Business Analysis & Domain-Driven Design</b></summary>
+[todo: update this part; add missing parts of DDD basics based on this article: https://medium.com/@code.chandrashekhar/domain-driven-design-ddd-a-complete-deep-dive-7932dff1f613]
 > **1. Understand the Business Domain**
 >
-> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions?
+> Business stakeholders often request software by describing a specific technical solution (e.g., "Build a script to click these buttons"). 
+> As engineers, our job is to map the actual *Business Domain*. What are the real-world processes, events, and failure conditions?
 >
 > **2. Establish a Ubiquitous Language**
 >
-> The most critical rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared vocabulary between developers and business experts. If the business talks about "Invoices", "Line Items", and "Approval Thresholds", those exact terms must become the core components (models) in our code.
+> Important rule of Domain-Driven Design (DDD) is establishing a "Ubiquitous Language" - a shared vocabulary between developers and business experts. 
+> If the business talks about `Invoices`, `Line Items`, and `Approval Thresholds`, those exact terms must become the core components (models) in our code.
 >
 > **3. Define Bounded Contexts & Entities**
 >
-> We must isolate our specific area of responsibility (the Bounded Context). Inside this context, we define our Entities (objects with a distinct identity, like an Invoice) and Value Objects (attributes without an identity, like a Line Item amount).
+> We must isolate our specific area of responsibility from the chaotic nature of the real life process. This isolated area of responsibility is called the **Bounded Context**. 
+> Inside this context, we define our **Entities** - objects with a distinct identity, like an `Invoice`, and **Value Objects** - attributes without an identity, like a `Line Item amount`. 
+> [todo: add Aggregates and Repository]
 >
 > **4. Hexagonal Architecture (Ports and Adapters)**
 >
-> DDD separates the core business rules from the technical implementation. The mathematical validation of an Invoice does not care if the data came from a REST API or a database. By separating the "Domain" (business rules) from the "Infrastructure" (technical details like HTTP requests), we build software that can survive technological shifts.
-> Ports and Adapters (also known as Hexagonal Architecture) is a pattern that isolates your core business logic (the hexagon) from outside concerns. A "Port" is the interface your application exposes (e.g., fetching an invoice), while an "Adapter" is the technical implementation that plugs into that port (e.g., a REST API client or a SQL database query). This decouples your core logic from external dependencies, making the system highly testable and resilient to technology changes.
+> DDD separates the core business rules from the technical implementation. 
+> The mathematical validation of an Invoice does not care if the data came from a REST API or a database. 
+> By separating the `Domain` (business rules) from the `Infrastructure` (technical details like HTTP requests), we build software that can survive technological shifts.
+> Ports and Adapters (also known as Hexagonal Architecture) is a pattern that isolates your core business logic (the hexagon) from outside concerns. 
+> A "Port" is the interface your application exposes (e.g., fetching an invoice), while an "Adapter" is the technical implementation that plugs into that port (e.g., a REST API client or a SQL database query). 
+> This decouples your core logic from external dependencies, making the system highly testable and resilient to technology changes.
 
 </details>
 
 ---
 
-Before writing code, we must translate Sarah's request into a strict DDD engineering plan:
+Before writing code, we must translate Sarah's request into a strict DDD engineering plan. Let's start!
 
 #### Understand the Domain & Identify Risks
 
 **What are we doing?** 
-In this section, we break down Sarah's email to map out the actual business reality. Before writing a single line of code, we will formalize the core workflow she described into a visual flowchart, define a shared vocabulary (the Ubiquitous Language), establish the business entities, and proactively identify the critical failure points (risks) that our software must mitigate.
+: In this section, we break down Sarah's email to map out the actual business reality. 
+: We will formalize the core workflow she described into a visual flowchart, define a shared vocabulary (the Ubiquitous Language), establish the business entities, and identify the critical failure points (risks) that our software must mitigate.
 
-##### The Core Workflow
+##### The Core Workflow (As-Is)
 
 To understand what we are replacing, we first need to visualize Sarah's **As-Is (Current State)** process. This is the manual, screen-clicking workflow her team currently suffers through every day. It explicitly highlights the logic her team follows to process invoices, serving as the blueprint for our backend automation.
 
 Acquire pending invoices, verify data integrity (math validation), apply business rules ($10,000 threshold), and execute the approval.
+
+[todo: verify and update if needed the mermaid diabram of the as-is workflow]
 
    ```mermaid
    flowchart LR
@@ -128,34 +154,45 @@ Acquire pending invoices, verify data integrity (math validation), apply busines
 
 ##### Risks
 
+[todo: analyze if we need to add learning section here to tackle risks analysis in the context of DDD; you can say no if this is not required or already covered above]
+
 In Domain-Driven Design, we categorize risks to figure out *where* our code should handle them. **Domain Risks** relate to the core business logic—such as Sarah mentioning the upstream vendor system glitching and sending corrupt invoice math. These must be caught by our core validation rules. **Infrastructure Risks** deal with the chaotic outside world—like the ERP portal crashing with 503 errors. These must be handled at the absolute boundary of our application using resilient network strategies.
+[todo: are there any other risks categories in DDD? is our categorization valid?]
 
 | ID | Type | Risk | Mitigation |
 | :- | :--- | :--- | :--------- |
 | R-D-01 | Domain Risk | The upstream system occasionally sends corrupted payloads where the math does not add up. | We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic. |
 | R-I-02 | Infrastructure Risk | The target ERP API is known to drop connections and throw 503 errors. | We will isolate all API calls and wrap them in an exponential backoff retry loop. |
 
-#### Define the Ubiquitous Language & Entities
+#### Define the Ubiquitous Language
 
 Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
 
 In addition to the `Invoice` and `LineItem`, we also define `Vendor` and `Currency` as important attributes of the domain. It's crucial that our internal Python attributes (e.g., `total_amount`) exactly map to the business vocabulary, avoiding generic or misleading terms.
 
+[todo: what about the approval threshold? is this also part of ubiquitous language?]
+
 #### Map the Architecture Layers
 
-To ensure our solution is robust and can survive technology shifts, we map our components using the **Ports and Adapters** (Hexagonal) architecture. We separate the pure business rules (the Domain) from the technical implementation details (the Infrastructure). If Sarah's Finance team decides to switch from this specific ERP system to SAP next year, our Domain rules (e.g., the $10,000 threshold and math validation) won't need to change at all. We will only need to swap out the Infrastructure adapter.
+To ensure our solution is robust and can survive technology shifts, we map our components using the **Ports and Adapters** (Hexagonal) architecture. We separate the pure business rules (the Domain) from the technical implementation details (the Infrastructure). 
+
+If Sarah's Finance team decides to switch from this specific ERP system to SAP next year, our Domain rules (e.g., the $10,000 threshold and math validation) won't need to change at all. We will only need to swap out the Infrastructure adapter.
 
 | Layer | Description |
 | :---- | :---------- |
-| **Infrastructure** | This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops. |
+| **Infrastructure** | This layer is solely responsible for talking to the unstable external world. It handles the HTTP requests and the retry loops. [todo: include what it will be in the context of our project]|
 | **Domain** | This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules. |
 | **Application** | This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices. |
 
 #### Design the Automated Workflow (To-Be)
 
-Now that we have separated our concerns into distinct architectural layers and established our Ubiquitous Language, we can design the **To-Be (Future State)** workflow. Notice how this new diagram maps directly to our layered architecture: fetching invoices happens in the Infrastructure, validating math and applying thresholds happens in the Domain, and the Application orchestrator coordinates the flow. 
+Now that we have separated our concerns into distinct architectural layers and established our Ubiquitous Language, we can design the **To-Be** workflow. 
 
-Instead of opening Chrome and calculating math manually, our API-driven Python backend will invisibly and reliably execute the following flow:
+Notice how this new diagram maps directly to our layered architecture: fetching invoices happens in the Infrastructure, validating math and applying thresholds happens in the Domain, and the Application orchestrator coordinates the flow. 
+
+Instead of opening Chrome and calculating math, our API-driven Python backend will invisibly and reliably execute the following flow:
+
+[todo: verify if the diagram is up to date and maps directly to our layered architecture]
 
    ```mermaid
    flowchart LR
@@ -180,7 +217,8 @@ Instead of opening Chrome and calculating math manually, our API-driven Python b
 
 > **1. The Modern Standard (PEP 621)**
 >
-> In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
+> In legacy Python, developers used `requirements.txt` and struggled with "it works on my machine" bugs. 
+> Modern Python engineering demands isolated, reproducible environments. The industry standard is now **PEP 621**, which centralizes all project configuration and dependencies into a single file called `pyproject.toml`.
 >
 > **2. Introducing `uv`**
 >
@@ -603,10 +641,12 @@ Sarah's business requirement explicitly stated that the ERP math is sometimes co
 ```python
 from pydantic import BaseModel, model_validator
 
+
 class LineItem(BaseModel):
     model_config = {"frozen": True}
     description: str
     amount: float
+
 
 class Invoice(BaseModel):
     id: str
@@ -630,10 +670,12 @@ class Invoice(BaseModel):
 import math
 from pydantic import BaseModel, model_validator
 
+
 class LineItem(BaseModel):
     model_config = {"frozen": True}
     description: str
     amount: float
+
 
 class Invoice(BaseModel):
     id: str
@@ -694,13 +736,16 @@ class Invoice(BaseModel):
             import pytest
             from src.domain.models import Invoice, LineItem
 
+
             @pytest.mark.unit
             def test_bad_math_is_rejected():
                 with pytest.raises(ValueError):
                     Invoice(
-                        id="1", vendor="A", currency="USD",
+                        id="1",
+                        vendor="A",
+                        currency="USD",
                         line_items=[LineItem(description="Item", amount=50)],
-                        total_amount=9000  # Data Corruption!
+                        total_amount=9000,  # Data Corruption!
                     )
             ```
 
@@ -826,6 +871,7 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 from src.domain.models import Invoice
 
+
 class APIClient:
     def fetch_pending_invoices(self) -> list[Invoice]:
         # TODO: Make a GET request to http://127.0.0.1:8080/api/invoices/pending
@@ -851,11 +897,12 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 from src.domain.models import Invoice
 
+
 class FastAPIClient:
     def fetch_pending_invoices(self) -> list[Invoice]:
         response = requests.get("http://127.0.0.1:8080/api/invoices/pending", timeout=10)
         response.raise_for_status()
-        
+
         valid_invoices = []
         for item in response.json():
             try:
@@ -864,7 +911,7 @@ class FastAPIClient:
                 # Log or print the error and skip this corrupted invoice
                 print(f"Skipping corrupted invoice: {e}")
                 continue
-                
+
         return valid_invoices
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -896,15 +943,18 @@ class FastAPIClient:
 ```python
 import pytest
 
+
 @pytest.fixture
 def mock_erp_json():
-    return [{
-        "id": "INV-MOCK",
-        "vendor": "TestVendor",
-        "currency": "USD",
-        "line_items": [{"description": "Service", "amount": 100}],
-        "total_amount": 100
-    }]
+    return [
+        {
+            "id": "INV-MOCK",
+            "vendor": "TestVendor",
+            "currency": "USD",
+            "line_items": [{"description": "Service", "amount": 100}],
+            "total_amount": 100,
+        }
+    ]
 ```
 
 </details>
@@ -937,27 +987,28 @@ import pytest
 from unittest.mock import patch, Mock
 from src.infrastructure.api_client import APIClient
 
+
 @pytest.mark.unit
 # @patch intercepts the requests.get function BEFORE it runs.
 # It prevents the network call and passes a fake "mock_get" object into our test function.
 @patch("src.infrastructure.api_client.requests.get")
 def test_fetch_pending_invoices(mock_get, mock_erp_json):
     # ARRANGE: Configure our fake network response
-    
+
     # 1. Create a fake HTTP response object
     mock_response = Mock()
-    
+
     # 2. When our code calls response.json(), return the fake dictionary from conftest.py
     mock_response.json.return_value = mock_erp_json
-    
+
     # 3. Tell the intercepted requests.get to return our fake HTTP response
     mock_get.return_value = mock_response
-    
-    # ACT: Run the client. 
+
+    # ACT: Run the client.
     # It thinks it is hitting the real network, but it is actually talking to our Mock!
     client = APIClient()
     invoices = client.fetch_pending_invoices()
-    
+
     # ASSERT: Did the client successfully parse the fake JSON into Pydantic models?
     assert len(invoices) == 1
     assert invoices[0].id == "INV-MOCK"
@@ -998,10 +1049,8 @@ uv run pytest -m unit
 def test_fetch_pending_invoices_skips_corrupted_invoice(mock_get):
     mock_response = Mock()
     mock_response.json.return_value = [
-        {"id": "GOOD-1", "vendor": "A", "currency": "USD",
-        "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
-        {"id": "BAD-1", "vendor": "A", "currency": "USD",
-        "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
+        {"id": "GOOD-1", "vendor": "A", "currency": "USD", "line_items": [{"description": "X", "amount": 100}], "total_amount": 100},
+        {"id": "BAD-1", "vendor": "A", "currency": "USD", "line_items": [{"description": "X", "amount": 100}], "total_amount": 9999},
     ]
     mock_get.return_value = mock_response
     invoices = APIClient().fetch_pending_invoices()
@@ -1096,10 +1145,12 @@ from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
+
 # SOLID: Dependency Inversion. We don't care HOW the API works, just that it has these methods.
 class InvoiceAPIClient(Protocol):
     def fetch_pending_invoices(self) -> list[Invoice]: ...
     def approve_invoice(self, invoice_id: str) -> bool: ...
+
 
 class InvoiceProcessor:
     def __init__(self, api_client: InvoiceAPIClient):
@@ -1125,9 +1176,11 @@ from typing import Protocol
 
 logger = logging.get_logger()
 
+
 class InvoiceAPIClient(Protocol):
     def fetch_pending_invoices(self) -> list[Invoice]: ...
     def approve_invoice(self, invoice_id: str) -> bool: ...
+
 
 class InvoiceProcessor:
     def __init__(self, api_client: InvoiceAPIClient):
@@ -1214,21 +1267,23 @@ Sarah needs proof that the bot won't accidentally approve a $50,000 invoice. Bec
 import pytest
 from src.domain.models import Invoice, LineItem
 
+
 class FakeAPIClient:
     def __init__(self):
         self.approved_invoices = []
-        
+
     def fetch_pending_invoices(self):
         # We intentionally hardcode a cheap and an expensive invoice here
         # so we can test that the Orchestrator applies the $10,000 rule correctly!
         return [
             Invoice(id="CHEAP-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=5)], total_amount=5),
-            Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000)
+            Invoice(id="EXPENSIVE-1", vendor="A", currency="USD", line_items=[LineItem(description="X", amount=20000)], total_amount=20000),
         ]
 
     def approve_invoice(self, invoice_id: str):
         self.approved_invoices.append(invoice_id)
         return True
+
 
 @pytest.fixture
 def fake_api():
@@ -1262,14 +1317,15 @@ def fake_api():
 import pytest
 from src.application.processor import InvoiceProcessor
 
+
 @pytest.mark.integration
 def test_processor_approves_under_threshold_only(fake_api):
     # Arrange: Inject the Fake infrastructure!
     processor = InvoiceProcessor(api_client=fake_api)
-    
+
     # Act
     processor.run()
-    
+
     # Assert
     assert "CHEAP-1" in fake_api.approved_invoices
     assert "EXPENSIVE-1" not in fake_api.approved_invoices
@@ -1343,6 +1399,7 @@ from src.application.processor import InvoiceProcessor
 # Configure basic logging so we can see the output in the terminal
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+
 def main():
     print("Starting Invoice Processing Bot...")
 
@@ -1356,6 +1413,7 @@ def main():
     processor.run()
 
     print("Processing Complete!")
+
 
 # Standard Python idiom to ensure this only runs when executed directly
 if __name__ == "__main__":
@@ -1471,9 +1529,11 @@ from typing import Protocol
 
 logger = structlog.get_logger()
 
+
 class InvoiceAPIClient(Protocol):
     def fetch_pending_invoices(self) -> list[Invoice]: ...
     def approve_invoice(self, invoice_id: str) -> bool: ...
+
 
 class InvoiceProcessor:
     def __init__(self, api_client: InvoiceAPIClient):
@@ -1525,14 +1585,10 @@ import structlog
 from src.infrastructure.api_client import FastAPIClient
 from src.application.processor import InvoiceProcessor
 
+
 def main():
     # Configure the 12-Factor JSON log stream
-    structlog.configure(
-        processors=[
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer()
-        ]
-    )
+    structlog.configure(processors=[structlog.processors.TimeStamper(fmt="iso"), structlog.processors.JSONRenderer()])
 
     logger = structlog.get_logger()
     logger.info("bot_starting")
@@ -1543,6 +1599,7 @@ def main():
     processor.run()
 
     logger.info("bot_finished")
+
 
 if __name__ == "__main__":
     main()
