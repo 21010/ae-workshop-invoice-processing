@@ -8,11 +8,11 @@ By the end of this journey, you will have built a resilient, API-driven solution
 
 ## Prerequisite: Get Your Own Copy of this Repository
 
-<p style="padding: 0.5em 2em; background: #ffd3d3;">⚠️ Before you start writing code, you need your own copy of this project so you can save your work!</p>
+<p style="padding: 0.5em 2em; background: #ffd3d3; color: #000; border-left: 5px solid #ff1313; border-radius: 0.376em;">Before you start writing code, you need your own copy of this project so you can save your work!</p>
 
 1. Click the **Fork This Repository** button below to create a copy in your personal GitHub account.
 
-    <a target="_blank" rel="noopener noreferrer" href="https://github.com/21010/ae-workshop-invoice-processing/fork" style="padding: 0.2em 0.5em; background: #e6eaef; border-radius: .375em; color: #111;" onMouseOver="this.style.background='#D4D6D9'" onMouseOut="this.style.background='#e6eaef'">
+    <a target="_blank" rel="noopener noreferrer" href="https://github.com/21010/ae-workshop-invoice-processing/fork" style="padding: 0.2em 0.5em; background: #e6eaef; border-radius: .375em; color: #111; text-decoration: none;">
         <svg data-component="Octicon" aria-hidden="true" focusable="false" class="octicon octicon-repo-forked" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"></path></svg>
         <b>Fork</b>
     </a>
@@ -28,7 +28,7 @@ You are all set! Now you can safely commit your progress!
 
 *You have just received the following email from Sarah in the Finance Department:*
 
-<div style="background:#f1f1f1; padding: 1em 2em; border-radius: 0.375em;">
+<div style="background:#f1f1f1; padding: 1em 2em; border-radius: 0.375em; color: #000;">
     <span><b>From:&nbsp;&nbsp;&nbsp;&nbsp;</b> Sarah Jones [sarah.jones@corp.com]
     <br/><b>Subject:</b> Request for a new Excel Macro / Power Automate script for Invoices approval process</span>
     <hr/>
@@ -53,7 +53,7 @@ You are all set! Now you can safely commit your progress!
 
 Sarah described her problem using a specific, fragile technical solution (a UI-clicking, a macro). As Automation Engineers, we know that UI automation frequently breaks when a website updates. Instead of building a screen-scraping bot, we will solve her underlying business requirements by building a headless, robust, API-driven Python backend.
 
-<p style="background:#eee; padding: .5em 1em; border-radius: .375em;"><b>ℹ️ Caveat</b><br/>
+<p style="background:#eee; padding: .5em 1em; border-radius: .375em; color: #000;"><b>ℹ️ Caveat</b><br/>
 <i>API-driven Python is strictly better *when an API exists*. For legacy mainframe green-screens, SAP GUI without BAPI, or vendor portals lacking REST endpoints, traditional RPA (UI automation) remains the correct architectural choice.</i>
 </p>
 
@@ -85,7 +85,7 @@ However, before we rush into writing code or building the screen-scraping macro 
 
 Let's put on our Automation Engineer hats and start breaking this down.
 
-<p style="background:#eee; padding: .5em 1em; border-radius: .375em;"><b>ℹ️ ERP API Access</b><br/>
+<p style="background:#eee; padding: .5em 1em; border-radius: .375em; color: #000;"><b>ℹ️ ERP API Access</b><br/>
 <i>Your workspace is completely empty (except for this guide and a ERP API running in the background on <code>http://127.0.0.1:8080</code>) in your Codespace environment.</i></p>
 
 ### 2.1. Process Analysis & Architecture Design
@@ -185,8 +185,6 @@ Acquire pending invoices, verify data integrity (math validation), apply busines
        E -- No --> L((End))
    ```
 
-[todo: should we document5 this in /docs? add instructions for the student]
-
 ##### Risks
 
 In Domain-Driven Design, we categorize risks to figure out *where* our code should handle them. Our categorization is a practical extension of DDD principles:
@@ -197,26 +195,33 @@ In Domain-Driven Design, we categorize risks to figure out *where* our code shou
 | **Infrastructure Risks** | Deal with the chaotic outside world, like the ERP portal crashing with 503 errors. These must be handled at the absolute boundary of our application (the Infrastructure Adapters) using resilient network strategies like retries. |
 | **Application Risks** (Orchestration Risks) | Relate to the workflow failing mid-process, such as a server restarting while processing an invoice. These are handled in the Application Services layer using transactions, idempotency, or queues. |
 
-[todo: add short narrative on what risks we noticed in our project]
+In analyzing Sarah's business case, we identified two primary points of failure that our bot must resiliently handle. First, on the domain side, the upstream system occasionally sends invalid data where the invoice totals simply do not add up. Second, on the infrastructure side, the target ERP system is notoriously unreliable, frequently dropping connections and throwing 503 errors. We have documented these specific risks and their corresponding mitigation strategies below.
 
-| ID     | Type | Risk | Mitigation |
-| :----- | :--- | :--- | :--------- |
+| ID | Type | Risk | Mitigation |
+| :- | :--- | :--- | :--------- |
 | RD01 | Domain Risk | The upstream system occasionally sends corrupted payloads where the math does not add up. | We will implement strict data validation at the absolute boundary of our application to reject bad payloads before they ever reach our core logic. |
 | RI01 | Infrastructure Risk | The target ERP API is known to drop connections and throw 503 errors. | We will isolate all API calls and wrap them in an exponential backoff retry loop. |
 
-[todo: should we document this in /docs? add instructions for the student]
-
 #### Define the Ubiquitous Language
 
+To bridge the gap between Sarah's business requirements and our technical implementation, we have established a shared Ubiquitous Language.
+
 Based on Sarah's email, our Domain models must explicitly represent an `Invoice` (Entity) which contains multiple `LineItem`s (Value Objects).
-
 In addition to the `Invoice` and `LineItem`, we also define `Vendor` and `Currency` as important attributes of the domain. It's crucial that our internal Python attributes (e.g., `total_amount`) exactly map to the business vocabulary, avoiding generic or misleading terms.
-
 Additionally, the `Approval Threshold` is a critical part of the Ubiquitous Language. It is not just a random `10000` integer hardcoded in a script; it is a formal Domain concept that dictates whether an invoice is eligible for Auto-Approval or requires Manual Review. We will model this explicitly.
 
-[todo: add a narrative and a table to summarize our ubiquitous language for this project]
+By strictly using these terms in both our discussions and our codebase, we eliminate ambiguity and ensure our domain models accurately reflect the real-world finance process. Below is a summary of the core terms defining our system:
 
-[todo: should we document5 this in /docs? add instructions for the student]
+| Term | Type | Description |
+| :--- | :--- | :---------- |
+| **Invoice** | Entity | The core document received from the upstream system that requires validation and processing. |
+| **Line Item** | Value Object | Individual charges that make up the invoice. The sum of these items must equal the invoice total. |
+| **Vendor** | Attribute | The supplier or company that issued the invoice. |
+| **Currency** | Attribute | The monetary currency associated with the invoice amounts. |
+| **Total Amount** | Attribute | The final calculated monetary value of the invoice. |
+| **Approval Threshold** | Business Rule | The strict $10,000 limit. Invoices below this limit can be processed automatically, while those above require human intervention. |
+| **Auto-Approval** | Action / State | The outcome for a valid invoice that falls strictly below the Approval Threshold. |
+| **Manual Review** | Action / State | The outcome for an invoice that either exceeds the Approval Threshold or fails mathematical validation. |
 
 #### Map the Architecture Layers
 
@@ -230,8 +235,6 @@ If Sarah's Finance team decides to switch from this specific ERP system to SAP n
 | **Domain** | This layer is strictly isolated from the network. It contains our `Invoice` models and the validation rules. |
 | **Application** | This is the orchestrator (or Use Case). It fetches data from the Infrastructure, passes it to the Domain for validation, applies the $10,000 threshold rule, and tells the Infrastructure to approve the valid invoices. |
 
-[todo: should we document5 this in /docs? add instructions for the student]
-
 #### Design the Automated Workflow (To-Be)
 
 Now that we have separated our concerns into distinct architectural layers and established our Ubiquitous Language, we can design the **To-Be** workflow. 
@@ -240,46 +243,54 @@ Notice how this new diagram maps directly to our layered architecture: fetching 
 
 Instead of opening Chrome and calculating math, our API-driven Python backend will invisibly and reliably execute the following flow:
 
-[todo: try to optimize this mermaid flow below; should we use some standard uml diagrams instead of a basic flowchart?]
+```mermaid
+flowchart LR
+    subgraph Application [Application Layer - Orchestrator]
+        Start((Process Triggered))
+        Loop{Invoices Remain?}
+        Next(Next Invoice)
+        End((Process Complete))
+    end
+    
+    subgraph Infrastructure [Infrastructure Layer - Adapters]
+        Fetch(Fetch Pending Invoices via API)
+        Approve(Auto-Approve via API)
+    end
+    
+    subgraph Domain [Domain Layer - Core Rules]
+        Validate{Is Math Valid?}
+        CheckAmount{Amount < $10k?}
+        Reject(Reject as Corrupted)
+        Manual(Flag for Manual Review)
+    end
 
-   ```mermaid
-   flowchart LR
-       subgraph Application [Application Layer - Orchestrator]
-           Start((Process Triggered))
-           Loop{Invoices Remain?}
-           Next(Next Invoice)
-           End((Process Complete))
-       end
-       
-       subgraph Infrastructure [Infrastructure Layer - Adapters]
-           Fetch(Fetch Pending Invoices via API)
-           Approve(Auto-Approve via API)
-       end
-       
-       subgraph Domain [Domain Layer - Core Rules]
-           Validate{Is Math Valid?}
-           CheckAmount{Amount < $10k?}
-           Reject(Reject as Corrupted)
-           Manual(Flag for Manual Review)
-       end
+    Start --> Fetch
+    Fetch --> Loop
+    Loop -- Yes --> Validate
+    Loop -- No --> End
+    Validate -- No --> Reject
+    Validate -- Yes --> CheckAmount
+    CheckAmount -- No --> Manual
+    CheckAmount -- Yes --> Approve
+    Reject --> Next
+    Manual --> Next
+    Approve --> Next
+    Next --> Loop
+```
 
-       Start --> Fetch
-       Fetch --> Loop
-       Loop -- Yes --> Validate
-       Loop -- No --> End
-       Validate -- No --> Reject
-       Validate -- Yes --> CheckAmount
-       CheckAmount -- No --> Manual
-       CheckAmount -- Yes --> Approve
-       Reject --> Next
-       Manual --> Next
-       Approve --> Next
-       Next --> Loop
-   ```
+#### Summary: Process Analysis & Architecture Design
 
-[todo: should we document5 this in /docs? add instructions for the student]
+By analyzing Sarah's email and the manual process, we successfully translated her manual, error-prone workflow into a robust technical design using Domain-Driven Design (DDD) principles. Instead of writing a brittle script that clicks buttons, we modeled the real-world business:
+- We defined a **Ubiquitous Language** (Invoices, Line Items, Approval Thresholds) to ensure our code speaks the same language as the finance team.
+- We mapped the **As-Is** and **To-Be** workflows to identify how data moves through the system.
+- We categorized potential failures into **Domain Risks** (corrupt math) and **Infrastructure Risks** (unstable APIs) to handle them at the appropriate architectural layers.
+- We structured the solution using **Hexagonal Architecture**, separating the core business logic (Domain) from the external integrations (Infrastructure).
 
-### Project Initialization
+To properly document our findings, we have generated the following artifacts in the `/docs` folder:
+- [PROCESS_ANALYSIS.md](file:///C:/Users/Grzegorz/projects/it-mgnt-team/docs/PROCESS_ANALYSIS.md): Details the current vs. future state workflows and identified risk mitigations.
+- [ARCHITECTURE_DESIGN.md](file:///C:/Users/Grzegorz/projects/it-mgnt-team/docs/ARCHITECTURE_DESIGN.md): Outlines the Ubiquitous Language, core entities, and layered architectural boundaries.
+
+### 2.2. Project Initialization
 
 <details>
 <summary style="cursor: pointer;"><b>📚 Click here to learn more about: Reproducible Environments & The `uv` Package Manager</b></summary>
@@ -314,9 +325,12 @@ When you run commands like `uv run`, it automatically and implicitly creates an 
 * `uv init` - Initializes a new project and creates the `pyproject.toml`.
 * `uv add <package>` - Installs a package and adds it to the production dependencies.
 * `uv add --dev <package>` - Installs a package only for local development/testing.
-* `uv run <command>` - Automatically executes a command *inside* the isolated virtual environment. You never have to manually run `source .venv/bin/activate` again!
-
-[todo: add command to remove package, uv sync, uv lock, uv audit]
+* `uv remove <package>` - Uninstalls a package and removes it from `pyproject.toml`.
+* `uv lock` - Resolves the dependency tree and strictly pins versions in the `uv.lock` file.
+* `uv sync` - Installs or uninstalls packages in the virtual environment to perfectly match the `uv.lock` file.
+* `uv run <command>` - Executes a command *inside* the isolated virtual environment.
+* `uv audit` - Scans the dependencies in `uv.lock` for known security vulnerabilities.
+* `uv self update` - Upgrades the `uv` tool itself to the latest version.
 
 ##### Anatomy of `pyproject.toml`
 
@@ -331,17 +345,6 @@ Here is how a modern, best-practice configuration looks:
 </details>
 
 ---
-
-[todo: add What are we doing? section to summarize the chapter using the structure:
-
-<div style="background: #eee; padding: .5em 1em; border: 1px solid #ccc">
-    <b> 📋 What are we doing?</b>
-    <ul>
-        <li></li>
-        <li></li>
-    </ul>
-</div>
-]
 
 With our architecture mapped out on the whiteboard, it is time to lay the technical foundation. In the past, you might have written a simple `requirements.txt` file or relied on proprietary RPA wrappers like `rcc` (Robocorp).
 
@@ -360,30 +363,54 @@ uv self update
 This command creates the core `pyproject.toml` file, which is the modern standard for Python configuration.
 
 ```bash
-uv init --no-package --python 3.12
+# uv initiates a new project using Python 3.12
+uv init --python 3.12
 ```
 
 #### Add production dependencies
 
-*Connecting to the Business Case:* We need `pydantic` to rigorously validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
+*Connecting to the Business Case:* We need `pydantic` to validate the math on Sarah's invoices (our Domain), `requests` to fetch the data (our Infrastructure), and `tenacity` to automatically handle the 503 network crashes she complained about.
 
 ```bash
+# add dependencies to our project is easy with uv
 uv add pydantic requests tenacity
 ```
 
 #### Add development dependencies
 
-*Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By explicitly keeping them separate, we ensure our production Docker container remains extremely small and secure.
+*Why `--dev`?* Tools like `pytest` (for testing) and `ruff` (for formatting) are critical for building the bot locally, but they do not need to be shipped to the final production server. By keeping them separate, we ensure our production environment remains extremely small and secure.
 
 ```bash
-uv add --dev pytest ruff bandit pyrefly pre-commit trufflehog
+uv add --dev pytest ruff bandit pyrefly pre-commit
 ```
 
 #### Analyze the Configuration
 
-Open the newly generated `pyproject.toml` file in your editor. Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
+When you initialize a project using `uv`, it establishes a modern, structured foundation. Here is the meaning of the key folders and files:
 
-### Building Automated Security Guardrails
+*   **`pyproject.toml`**: The central configuration file. It defines your project's metadata, dependencies, and build settings.
+*   **`.python-version`**: A file dictating the exact Python version to use. `uv` reads this to ensure your environment is consistent.
+*   **`uv.lock`**: A generated lockfile that pins the precise versions of all dependencies. This guarantees your bot runs identically on every machine.
+*   **`.venv/`**: The virtual environment. This sandboxed folder isolates your downloaded packages from the system-wide Python installation.
+*   **`src/`**: The directory for your actual application code. Isolating code inside `src/` prevents tools and tests from mistakenly importing from the project root.
+*   **`tests/`**: The folder containing automated unit and integration tests.
+
+Open the newly generated `pyproject.toml` file in your editor. 
+Notice how `uv` automatically tracked your dependencies and separated them into production vs. development arrays. This single file is now the source of truth for your bot's entire environment!
+
+It is crucial to understand that the `name` defined in your `pyproject.toml` dictates the expected module name inside your `src` directory.
+    
+For example, if your `pyproject.toml` has:
+```toml
+[project]
+name = "invoice-processing"
+```
+The packaging tools automatically look for a matching Python module inside the `src/` folder named `invoice_processing` (note the underscore replacing the hyphen): `src/invoice_processing/`.
+
+**Why is this important?** 
+If these names do not align, the build process will fail because it cannot locate your source code when packaging the bot. This convention ensures a predictable layout where the project name and the importable package name are always strictly linked.
+
+### 2.3. Building Automated Security Guardrails
 
 <details>
 <summary style="cursor: pointer;"><b>📚 Click here to learn more about : Shift-Left Security & Tooling</b></summary>
@@ -400,29 +427,18 @@ By enforcing these rules locally, you are preparing your codebase for Enterprise
 
 Our pre-commit pipeline executes in a specific "Fail-Fast" order using the best tools available in the Python ecosystem:
 
-* **Trufflehog:** A high-speed secrets scanner. It uses heuristics and regex to instantly block commits containing hardcoded API keys, passwords, or tokens.
+* **GitLeaks:** A high-speed secrets scanner. While TruffleHog V3 is an excellent tool for CI/CD pipelines, GitLeaks is more suitable and lightweight for local pre-commit pipelines. It instantly blocks commits containing hardcoded API keys, passwords, or tokens.
+* **uv audit:** Scans your `uv.lock` file against vulnerability databases to ensure none of your installed dependencies have known security exploits (CVEs).
+* **check-added-large-files:** A standard Git hook that prevents accidental commits of massive files (like CSV datasets or binaries).
 * **Ruff (`check --fix` and `format`):** Built in Rust, Ruff is 10-100x faster than legacy tools like `flake8` and `black`. It automatically fixes syntax errors, removes unused imports, and enforces strict, uniform code formatting.
 * **Bandit:** A static application security testing (SAST) tool designed to find common security issues in Python code (e.g., using `eval()` or weak cryptographic hashes).
-* **Pyrefly:** An advanced static analysis tool that detects "code smells" and suggests modern Python refactoring patterns.
-* **uv audit:** Scans your `uv.lock` file against vulnerability databases to ensure none of your installed dependencies have known security exploits (CVEs).
+* **Pyrefly:** An advanced static analysis tool from Meta that type-checks and detects structural code issues. We strictly use Pyrefly over Mypy or Pyright for its superior capability to detect code smells and suggest modern Python refactoring patterns.
 * **Pytest:** The industry standard testing framework. Running unit tests as the final pre-commit hook ensures developers cannot push code that breaks core business logic.
-
-[todo: verify and update this section to follow the best practices of configuring pre-commit pipeline: order, tools; analyze our existing pre-commit configuration; remember to keep pyrefly instead of mypy or pyright]
+* **Gitlint:** (Runs on the commit-msg stage) Ensures your commit messages follow Conventional Commits formatting.
 
 </details>
 
 ---
-
-[todo: add What are we doing? section to summarize the chapter using the structure:
-
-<div style="background: #eee; padding: .5em 1em; border: 1px solid #ccc">
-    <b> 📋 What are we doing?</b>
-    <ul>
-        <li></li>
-        <li></li>
-    </ul>
-</div>
-]
 
 Now that our environment is built, we need to protect it. We are going to set up automated guardrails so that nobody on your team can ever commit sloppy or insecure code.
 
@@ -431,6 +447,7 @@ Now that our environment is built, we need to protect it. We are going to set up
 When you ran `uv init` in Step 1, it automatically initialized a Git repository for you behind the scenes. However, older Git configurations often default to the legacy `master` branch. Let's rename it to the modern industry standard `main`.
 
 ```bash
+# rename branch from master to main
 git branch -M main
 ```
 
@@ -2126,3 +2143,4 @@ Here is the secret: **AI Agents** (like OpenAI Swarm, LangChain, or AutoGen) *ha
 By building this architecture today, you are now one massive step closer to the AI Era. You aren't just an RPA Developer anymore; you are an AI Systems Architect.
 
 Go grab a cake or chicken leg. You've earned it. ☕🚀
+
